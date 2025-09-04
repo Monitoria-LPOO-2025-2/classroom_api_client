@@ -94,12 +94,14 @@ class ClassroomService:
                     )
                     submission["studentProfile"] = student_profile
                 except Exception as e:
-                    print(f"⚠️  Warning: Could not get student profile for user {submission['userId']}: {e}")
+                    print(
+                        f"⚠️  Warning: Could not get student profile for user {submission['userId']}: {e}"
+                    )
                     # Create a minimal profile
                     submission["studentProfile"] = {
                         "id": submission["userId"],
                         "name": {"fullName": f"User_{submission['userId']}"},
-                        "emailAddress": f"user_{submission['userId']}@unknown.com"
+                        "emailAddress": f"user_{submission['userId']}@unknown.com",
                     }
 
             return submission
@@ -114,8 +116,8 @@ class ClassroomService:
                 "studentProfile": {
                     "id": "unknown",
                     "name": {"fullName": "Unknown Student"},
-                    "emailAddress": "unknown@unknown.com"
-                }
+                    "emailAddress": "unknown@unknown.com",
+                },
             }
 
     def download_submission_files_with_student_info(
@@ -136,18 +138,19 @@ class ClassroomService:
             student_profile = submission_info.get("studentProfile", {})
 
             student_name = (
-                student_profile.get("name", {}).get("fullName") or
-                student_profile.get("name", {}).get("givenName", "") + " " +
-                student_profile.get("name", {}).get("familyName", "") or
-                f"Student_{submission_info.get('userId', 'Unknown')}"
+                student_profile.get("name", {}).get("fullName")
+                or student_profile.get("name", {}).get("givenName", "")
+                + " "
+                + student_profile.get("name", {}).get("familyName", "")
+                or f"Student_{submission_info.get('userId', 'Unknown')}"
             ).strip()
 
             if not student_name or student_name == "Student_":
                 student_name = f"Student_{submission_info.get('userId', 'Unknown')}"
 
             student_email = (
-                student_profile.get("emailAddress") or
-                f"student_{submission_info.get('userId', 'unknown')}@unknown.com"
+                student_profile.get("emailAddress")
+                or f"student_{submission_info.get('userId', 'unknown')}@unknown.com"
             )
 
             print(f"👤 Student identified: {student_name}")
@@ -186,5 +189,5 @@ class ClassroomService:
                 "user_id": "unknown",
                 "submission_state": "ERROR",
                 "attachments_count": 0,
-                "error": str(e)
+                "error": str(e),
             }

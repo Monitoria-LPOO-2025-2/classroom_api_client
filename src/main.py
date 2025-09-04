@@ -294,6 +294,7 @@ def download_all_submissions(
 
         # Create base download directory
         from pathlib import Path
+
         Path(download_folder).mkdir(parents=True, exist_ok=True)
 
         total_files = 0
@@ -321,8 +322,8 @@ def download_all_submissions(
                     course_id, coursework_id, submission_id, download_folder
                 )
 
-                student_name = result['student_name']
-                student_email = result['student_email']
+                student_name = result["student_name"]
+                student_email = result["student_email"]
                 downloaded_files = result["downloaded_files"]
 
                 print(f"   👤 Student: {student_name}")
@@ -347,7 +348,7 @@ def download_all_submissions(
                 print(f"   ❌ Error: {e}")
 
         # Summary
-        print(f"\n" + "="*60)
+        print(f"\n" + "=" * 60)
         print(f"🎉 Download process completed!")
         print(f"   📊 Total submissions processed: {len(submissions)}")
         print(f"   ✅ Successful downloads: {successful_downloads}")
@@ -367,6 +368,7 @@ def download_all_submissions(
     except Exception as e:
         print(f"❌ Critical error in download process: {e}")
         import traceback
+
         print(f"📋 Full error details:")
         traceback.print_exc()
 

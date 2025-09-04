@@ -85,10 +85,10 @@ class DriveService:
         # Remove or replace invalid characters
         invalid_chars = '<>:"/\\|?*'
         for char in invalid_chars:
-            filename = filename.replace(char, '_')
+            filename = filename.replace(char, "_")
 
         # Remove leading/trailing dots and spaces
-        filename = filename.strip('. ')
+        filename = filename.strip(". ")
 
         # Ensure filename is not empty
         if not filename:
@@ -188,7 +188,10 @@ class DriveService:
         try:
             return (
                 self.drive_service.files()
-                .get(fileId=file_id, fields="id,name,mimeType,size,webViewLink,createdTime,modifiedTime")
+                .get(
+                    fileId=file_id,
+                    fields="id,name,mimeType,size,webViewLink,createdTime,modifiedTime",
+                )
                 .execute()
             )
         except Exception as e:
@@ -240,7 +243,9 @@ class DriveService:
             print(f"📄 Created marker file: {marker_file}")
             return downloaded_files
 
-        print(f"🔍 Processing {len(attachments)} attachment(s) for {student_name or 'student'}")
+        print(
+            f"🔍 Processing {len(attachments)} attachment(s) for {student_name or 'student'}"
+        )
 
         # Process each attachment
         for i, attachment in enumerate(attachments, 1):
@@ -265,12 +270,16 @@ class DriveService:
                 elif "youTubeVideo" in attachment:
                     youtube_video = attachment["youTubeVideo"]
                     video_id = youtube_video.get("id", "")
-                    video_title = youtube_video.get("title", f"YouTube_Video_{video_id}")
+                    video_title = youtube_video.get(
+                        "title", f"YouTube_Video_{video_id}"
+                    )
 
                     print(f"   🎥 YouTube video: {video_title}")
 
                     # Create a text file with YouTube link info
-                    youtube_file = student_path / f"{self._sanitize_filename(video_title)}.txt"
+                    youtube_file = (
+                        student_path / f"{self._sanitize_filename(video_title)}.txt"
+                    )
                     with open(youtube_file, "w", encoding="utf-8") as f:
                         f.write("YouTube Video Submission\n")
                         f.write(f"Title: {video_title}\n")
@@ -288,7 +297,9 @@ class DriveService:
                     print(f"   🔗 Link: {title}")
 
                     # Create a text file with link info
-                    link_file = student_path / f"{self._sanitize_filename(title)}_link.txt"
+                    link_file = (
+                        student_path / f"{self._sanitize_filename(title)}_link.txt"
+                    )
                     with open(link_file, "w", encoding="utf-8") as f:
                         f.write("Link Submission\n")
                         f.write(f"Title: {title}\n")
@@ -303,6 +314,7 @@ class DriveService:
                     # Create a debug file with the attachment info
                     debug_file = student_path / f"unknown_attachment_{i}.json"
                     import json
+
                     with open(debug_file, "w", encoding="utf-8") as f:
                         json.dump(attachment, f, indent=2)
 
@@ -322,8 +334,12 @@ class DriveService:
                 print(f"   📄 Created error log: {error_file}")
 
         if downloaded_files:
-            print(f"\n✅ Successfully processed {len(downloaded_files)} item(s) for {student_name or 'student'}")
+            print(
+                f"\n✅ Successfully processed {len(downloaded_files)} item(s) for {student_name or 'student'}"
+            )
         else:
-            print(f"\n⚠️  No files were successfully downloaded for {student_name or 'student'}")
+            print(
+                f"\n⚠️  No files were successfully downloaded for {student_name or 'student'}"
+            )
 
         return downloaded_files
