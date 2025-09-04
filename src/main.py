@@ -1,9 +1,13 @@
 import typer
+import typer
 import os
 import sys
 from pathlib import Path
 from dotenv import load_dotenv
+
+# ensure local imports work when running the script directly
 sys.path.insert(0, str(Path(__file__).parent))
+
 from services import ClassroomService
 from client import ClassroomClient
 
@@ -11,8 +15,42 @@ load_dotenv()
 
 app = typer.Typer()
 
+# sub-apps
+auth_app = typer.Typer()
+submission_app = typer.Typer()
+drive_app = typer.Typer()
+course_app = typer.Typer()
 
-@app.command()
+# mount sub-apps
+app.add_typer(auth_app, name="auth")
+app.add_typer(submission_app, name="submission")
+app.add_typer(drive_app, name="drive")
+app.add_typer(course_app, name="course")
+
+
+# ----- Auth commands -----
+@auth_app.command("login")
+def auth_login() -> None:
+    """Trigger OAuth 2.0 authentication flow."""
+    try:
+        client = ClassroomClient()
+        client.reset_credentials()
+        client = ClassroomClient()
+        print("Authentication successful! You can now use the API.")
+    except Exception as e:
+        print(f"Authentication failed: {e}")
+
+
+@auth_app.command("reset")
+def auth_reset() -> None:
+    """Reset stored authentication credentials."""
+    client = ClassroomClient()
+    client.reset_credentials()
+    print("Authentication credentials have been reset.")
+
+
+# ----- Course commands -----
+@course_app.command("list")
 def list_courses() -> None:
     """List all courses."""
     client = ClassroomClient()
@@ -25,7 +63,7 @@ def list_courses() -> None:
         print(f"{course['id']}: {course['name']}")
 
 
-@app.command()
+@course_app.command("get")
 def get_course(course_id: str = None) -> None:
     """Get the details of a specific course. Uses COURSE_ID from .env if not provided."""
     if course_id is None:
@@ -45,7 +83,7 @@ def get_course(course_id: str = None) -> None:
         print(f"Error fetching course: {e}")
 
 
-@app.command()
+@course_app.command("current")
 def get_current_course_info() -> None:
     """Get information about the course specified in COURSE_ID environment variable."""
     course_id = os.getenv("COURSE_ID")
@@ -57,36 +95,15 @@ def get_current_course_info() -> None:
     get_course(course_id)
 
 
-@app.command()
-def authenticate() -> None:
-    """Trigger OAuth 2.0 authentication flow."""
-    try:
-        client = ClassroomClient()
-        # Reset credentials to force re-authentication
-        client.reset_credentials()
-        # Create a new client to trigger the auth flow
-        client = ClassroomClient()
-        print("Authentication successful! You can now use the API.")
-    except Exception as e:
-        print(f"Authentication failed: {e}")
-
-
-@app.command()
-def reset_auth() -> None:
-    """Reset stored authentication credentials."""
-    client = ClassroomClient()
-    client.reset_credentials()
-    print("Authentication credentials have been reset.")
-
-
-@app.command()
+# ----- Submission commands (dependent on coursework) -----
+@submission_app.command("download")
 def download_submission_files(
     coursework_id: str,
     submission_id: str,
     course_id: str = None,
     download_folder: str = "downloads",
 ) -> None:
-    """Download all files from a submission with student information. Uses COURSE_ID from .env if not provided."""
+    """Download all files from a submission with student information."""
     if course_id is None:
         course_id = os.getenv("COURSE_ID")
         if not course_id:
@@ -103,7 +120,6 @@ def download_submission_files(
             course_id, coursework_id, submission_id, download_folder
         )
 
-        # Display student information
         print(f"👤 Student: {result['student_name']}")
         print(f"📧 Email: {result['student_email']}")
         print(f"🆔 User ID: {result['user_id']}")
@@ -121,7 +137,7 @@ def download_submission_files(
         print(f"❌ Error downloading files: {e}")
 
 
-@app.command()
+@submission_app.command("info")
 def get_submission_info(
     coursework_id: str, submission_id: str, course_id: str = None
 ) -> None:
@@ -153,7 +169,6 @@ def get_submission_info(
         print(f"   Email: {student_profile.get('emailAddress', 'N/A')}")
         print(f"   User ID: {submission_info.get('userId', 'N/A')}")
 
-        # Show attachments if any
         attachments = submission_info.get("assignmentSubmission", {}).get(
             "attachments", []
         )
@@ -172,7 +187,7 @@ def get_submission_info(
         print(f"❌ Error getting submission info: {e}")
 
 
-@app.command()
+@submission_app.command("list")
 def list_submissions_with_students(coursework_id: str, course_id: str = None) -> None:
     """List all submissions with student names for an assignment."""
     if course_id is None:
@@ -196,7 +211,6 @@ def list_submissions_with_students(coursework_id: str, course_id: str = None) ->
         print("-" * 80)
 
         for submission in submissions:
-            # Get student info for each submission
             try:
                 student_profile = service.student_repository.get_student_profile(
                     submission.get("userId", "")
@@ -211,7 +225,6 @@ def list_submissions_with_students(coursework_id: str, course_id: str = None) ->
                 submission_state = submission.get("state", "UNKNOWN")
                 submission_id = submission.get("id", "N/A")
 
-                # Count attachments
                 attachments = submission.get("assignmentSubmission", {}).get(
                     "attachments", []
                 )
@@ -233,7 +246,7 @@ def list_submissions_with_students(coursework_id: str, course_id: str = None) ->
         print(f"❌ Error listing submissions: {e}")
 
 
-@app.command()
+@submission_app.command("download-all")
 def download_all_submissions(
     coursework_id: str, course_id: str = None, download_folder: str = "downloads"
 ) -> None:
@@ -298,7 +311,8 @@ def download_all_submissions(
         print(f"❌ Error downloading all submissions: {e}")
 
 
-@app.command()
+# ----- Drive commands -----
+@drive_app.command("download")
 def download_drive_file(
     file_id: str, file_name: str = None, download_folder: str = "downloads"
 ) -> None:
@@ -321,7 +335,7 @@ def download_drive_file(
         print(f"❌ Error downloading file: {e}")
 
 
-@app.command()
+@drive_app.command("info")
 def get_file_info(file_id: str) -> None:
     """Get information about a Google Drive file."""
     client = ClassroomClient()
@@ -344,7 +358,8 @@ def get_file_info(file_id: str) -> None:
         print(f"❌ Error getting file info: {e}")
 
 
-@app.command()
+# ----- Coursework listing -----
+@course_app.command("list-work")
 def list_coursework(course_id: str = None) -> None:
     """List all coursework for a specific course. Uses COURSE_ID from .env if not provided."""
     if course_id is None:
@@ -368,7 +383,7 @@ def list_coursework(course_id: str = None) -> None:
         print(f"Error fetching coursework: {e}")
 
 
-@app.command()
+@course_app.command("list-submissions")
 def list_submissions(coursework_id: str, course_id: str = None) -> None:
     """List all submissions for a specific assignment. Uses COURSE_ID from .env if not provided."""
     if course_id is None:
@@ -392,7 +407,7 @@ def list_submissions(coursework_id: str, course_id: str = None) -> None:
         print(f"Error fetching submissions: {e}")
 
 
-@app.command()
+@submission_app.command("list-attachments")
 def list_attachments(
     coursework_id: str, submission_id: str, course_id: str = None
 ) -> None:
@@ -420,7 +435,7 @@ def list_attachments(
         print(f"Error fetching attachments: {e}")
 
 
-@app.command()
+@submission_app.command("comment")
 def add_comment(
     coursework_id: str, submission_id: str, comment: str, course_id: str = None
 ) -> None:
@@ -448,7 +463,7 @@ def add_comment(
         )
 
 
-@app.command()
+@submission_app.command("grade")
 def patch_grade(
     coursework_id: str, submission_id: str, grade: float, course_id: str = None
 ) -> None:
