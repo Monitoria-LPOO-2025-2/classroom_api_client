@@ -1,5 +1,5 @@
 from typing import List, Dict, Any
-from ..client import ClassroomClient
+from client import ClassroomClient
 
 
 class CourseRepository:

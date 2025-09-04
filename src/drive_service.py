@@ -1,7 +1,7 @@
 from typing import Dict, Any
 from pathlib import Path
 from googleapiclient.http import MediaIoBaseDownload
-from .client import ClassroomClient
+from client import ClassroomClient
 
 
 class DriveService:

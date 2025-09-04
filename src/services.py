@@ -1,10 +1,10 @@
 from typing import List, Dict, Any
-from .client import ClassroomClient
-from .drive_service import DriveService
-from .repositories.course_repository import CourseRepository
-from .repositories.coursework_repository import CourseworkRepository
-from .repositories.submission_repository import SubmissionRepository
-from .repositories.student_repository import StudentRepository
+from client import ClassroomClient
+from drive_service import DriveService
+from repositories.course_repository import CourseRepository
+from repositories.coursework_repository import CourseworkRepository
+from repositories.submission_repository import SubmissionRepository
+from repositories.student_repository import StudentRepository
 
 
 class ClassroomService:

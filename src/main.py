@@ -3,10 +3,9 @@ import os
 import sys
 from pathlib import Path
 from dotenv import load_dotenv
-from classroom_api.services import ClassroomService
-from classroom_api.client import ClassroomClient
-
 sys.path.insert(0, str(Path(__file__).parent))
+from services import ClassroomService
+from client import ClassroomClient
 
 load_dotenv()
 
