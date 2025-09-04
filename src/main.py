@@ -261,54 +261,116 @@ def download_all_submissions(
 
     client = ClassroomClient()
     service = ClassroomService(client)
+
     try:
-        print(f"📥 Downloading all submissions for assignment {coursework_id}...")
+        print(f"📥 Starting download process...")
+        print(f"   📋 Course ID: {course_id}")
+        print(f"   📝 Assignment ID: {coursework_id}")
+        print(f"   📁 Download folder: {download_folder}")
+
+        try:
+            coursework_list = service.get_course_work(course_id)
+            assignment_title = "Unknown Assignment"
+            for work in coursework_list:
+                if work.get("id") == coursework_id:
+                    assignment_title = work.get("title", "Unknown Assignment")
+                    break
+            print(f"   📚 Assignment: {assignment_title}")
+        except Exception as e:
+            print(f"   ⚠️  Could not get assignment title: {e}")
+
+        print(f"\n🔍 Fetching submissions...")
         submissions = service.get_student_submissions(course_id, coursework_id)
 
         if not submissions:
-            print("No submissions found for this assignment.")
+            print("❌ No submissions found for this assignment.")
+            print("   This could mean:")
+            print("   - The assignment has no submissions")
+            print("   - Invalid assignment ID")
+            print("   - Permission issues")
             return
+
+        print(f"✅ Found {len(submissions)} submission(s)")
+
+        # Create base download directory
+        from pathlib import Path
+
+        Path(download_folder).mkdir(parents=True, exist_ok=True)
 
         total_files = 0
         successful_downloads = 0
+        students_with_files = 0
+        students_without_files = 0
+        errors = []
 
         for i, submission in enumerate(submissions, 1):
             submission_id = submission.get("id")
+            user_id = submission.get("userId", "unknown")
+            submission_state = submission.get("state", "UNKNOWN")
+
             if not submission_id:
+                print(f"\n[{i}/{len(submissions)}] ⚠️  Skipping submission without ID")
                 continue
 
             try:
-                print(
-                    f"\n[{i}/{len(submissions)}] Processing submission {submission_id}..."
-                )
+                print(f"\n[{i}/{len(submissions)}] Processing submission...")
+                print(f"   🆔 Submission ID: {submission_id}")
+                print(f"   👤 User ID: {user_id}")
+                print(f"   📊 State: {submission_state}")
+
                 result = service.download_submission_files_with_student_info(
                     course_id, coursework_id, submission_id, download_folder
                 )
 
-                print(f"   👤 Student: {result['student_name']}")
-                print(f"   📧 Email: {result['student_email']}")
+                student_name = result["student_name"]
+                student_email = result["student_email"]
+                downloaded_files = result["downloaded_files"]
 
-                if result["downloaded_files"]:
-                    print(
-                        f"   ✅ Downloaded {len(result['downloaded_files'])} file(s):"
-                    )
-                    for file_path in result["downloaded_files"]:
-                        print(f"      📄 {file_path}")
-                    total_files += len(result["downloaded_files"])
+                print(f"   👤 Student: {student_name}")
+                print(f"   📧 Email: {student_email}")
+
+                if downloaded_files:
+                    print(f"   ✅ Downloaded {len(downloaded_files)} item(s):")
+                    for file_path in downloaded_files:
+                        file_name = Path(file_path).name
+                        print(f"      📄 {file_name}")
+                    total_files += len(downloaded_files)
                     successful_downloads += 1
+                    students_with_files += 1
                 else:
-                    print(f"   ℹ️  No files to download")
+                    print(f"   📝 No files found (directory created)")
+                    successful_downloads += 1
+                    students_without_files += 1
 
             except Exception as e:
-                print(f"   ❌ Error processing submission {submission_id}: {e}")
+                error_msg = f"Submission {submission_id} ({user_id}): {str(e)}"
+                errors.append(error_msg)
+                print(f"   ❌ Error: {e}")
 
-        print(f"\n🎉 Download complete!")
-        print(f"   📊 Processed {len(submissions)} submissions")
-        print(f"   ✅ Successfully downloaded from {successful_downloads} submissions")
-        print(f"   📄 Total files downloaded: {total_files}")
+        # Summary
+        print(f"\n" + "=" * 60)
+        print(f"🎉 Download process completed!")
+        print(f"   📊 Total submissions processed: {len(submissions)}")
+        print(f"   ✅ Successful downloads: {successful_downloads}")
+        print(f"   👥 Students with files: {students_with_files}")
+        print(f"   📝 Students without files: {students_without_files}")
+        print(f"   📄 Total files/items downloaded: {total_files}")
+        print(f"   📁 Files saved to: {Path(download_folder).absolute()}")
+
+        if errors:
+            print(f"\n⚠️  Errors encountered ({len(errors)}):")
+            for error in errors:
+                print(f"   ❌ {error}")
+
+        print(f"\n💡 Tip: Check the download folder for student directories")
+        print(f"   Each student has their own folder with their submissions")
 
     except Exception as e:
-        print(f"❌ Error downloading all submissions: {e}")
+        print(f"❌ Critical error in download process: {e}")
+        import traceback
+
+        print(f"📋 Full error details:")
+        traceback.print_exc()
 
 
 # ----- Drive commands -----

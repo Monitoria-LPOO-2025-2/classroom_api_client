@@ -81,18 +81,44 @@ class ClassroomService:
         self, course_id: str, course_work_id: str, submission_id: str
     ) -> Dict[str, Any]:
         """Gets submission details including student information."""
-        submission = self.submission_repository.get_submission_with_student_info(
-            course_id, course_work_id, submission_id
-        )
-
-        # Add student profile information
-        if "userId" in submission:
-            student_profile = self.student_repository.get_student_profile(
-                submission["userId"]
+        try:
+            submission = self.submission_repository.get_submission_with_student_info(
+                course_id, course_work_id, submission_id
             )
-            submission["studentProfile"] = student_profile
 
-        return submission
+            # Add student profile information
+            if "userId" in submission:
+                try:
+                    student_profile = self.student_repository.get_student_profile(
+                        submission["userId"]
+                    )
+                    submission["studentProfile"] = student_profile
+                except Exception as e:
+                    print(
+                        f"⚠️  Warning: Could not get student profile for user {submission['userId']}: {e}"
+                    )
+                    # Create a minimal profile
+                    submission["studentProfile"] = {
+                        "id": submission["userId"],
+                        "name": {"fullName": f"User_{submission['userId']}"},
+                        "emailAddress": f"user_{submission['userId']}@unknown.com",
+                    }
+
+            return submission
+
+        except Exception as e:
+            print(f"❌ Error getting submission info: {e}")
+            # Return minimal submission info
+            return {
+                "id": submission_id,
+                "userId": "unknown",
+                "state": "UNKNOWN",
+                "studentProfile": {
+                    "id": "unknown",
+                    "name": {"fullName": "Unknown Student"},
+                    "emailAddress": "unknown@unknown.com",
+                },
+            }
 
     def download_submission_files_with_student_info(
         self,
@@ -102,32 +128,66 @@ class ClassroomService:
         download_folder: str = "downloads",
     ) -> Dict[str, Any]:
         """Downloads files and returns information about the student who submitted them."""
-        # Get submission with student info
-        submission_info = self.get_submission_with_student_info(
-            course_id, course_work_id, submission_id
-        )
+        try:
+            # Get submission with student info
+            submission_info = self.get_submission_with_student_info(
+                course_id, course_work_id, submission_id
+            )
 
-        # Extract student information
-        student_name = (
-            submission_info.get("studentProfile", {})
-            .get("name", {})
-            .get("fullName", "Unknown")
-        )
+            # Extract student information with better fallbacks
+            student_profile = submission_info.get("studentProfile", {})
 
-        # Download files with student name for folder organization
-        attachments = self.get_submission_attachments(
-            course_id, course_work_id, submission_id
-        )
-        downloaded_files = self.drive_service.download_submission_attachments(
-            attachments, download_folder, student_name
-        )
+            student_name = (
+                student_profile.get("name", {}).get("fullName")
+                or student_profile.get("name", {}).get("givenName", "")
+                + " "
+                + student_profile.get("name", {}).get("familyName", "")
+                or f"Student_{submission_info.get('userId', 'Unknown')}"
+            ).strip()
 
-        return {
-            "submission": submission_info,
-            "downloaded_files": downloaded_files,
-            "student_name": student_name,
-            "student_email": submission_info.get("studentProfile", {}).get(
-                "emailAddress", "unknown@example.com"
-            ),
-            "user_id": submission_info.get("userId", "unknown"),
-        }
+            if not student_name or student_name == "Student_":
+                student_name = f"Student_{submission_info.get('userId', 'Unknown')}"
+
+            student_email = (
+                student_profile.get("emailAddress")
+                or f"student_{submission_info.get('userId', 'unknown')}@unknown.com"
+            )
+
+            print(f"👤 Student identified: {student_name}")
+            print(f"📧 Email: {student_email}")
+
+            # Get all attachments for this submission
+            attachments = self.get_submission_attachments(
+                course_id, course_work_id, submission_id
+            )
+
+            print(f"🔍 Found {len(attachments)} attachment(s) in submission")
+
+            # Download files with student name for folder organization
+            downloaded_files = self.drive_service.download_submission_attachments(
+                attachments, download_folder, student_name
+            )
+
+            return {
+                "submission": submission_info,
+                "downloaded_files": downloaded_files,
+                "student_name": student_name,
+                "student_email": student_email,
+                "user_id": submission_info.get("userId", "unknown"),
+                "submission_state": submission_info.get("state", "UNKNOWN"),
+                "attachments_count": len(attachments),
+            }
+
+        except Exception as e:
+            print(f"❌ Error in download_submission_files_with_student_info: {e}")
+            # Return minimal info even on error
+            return {
+                "submission": {"id": submission_id, "userId": "unknown"},
+                "downloaded_files": [],
+                "student_name": f"Error_Student_{submission_id[:8]}",
+                "student_email": "error@unknown.com",
+                "user_id": "unknown",
+                "submission_state": "ERROR",
+                "attachments_count": 0,
+                "error": str(e),
+            }
