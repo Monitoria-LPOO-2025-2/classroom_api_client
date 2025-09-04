@@ -529,7 +529,7 @@ def add_comment(
 def patch_grade(
     coursework_id: str, submission_id: str, grade: float, course_id: str = None
 ) -> None:
-    """Assign a grade to a submission. Uses COURSE_ID from .env if not provided.
+    """Assign a grade to a submission (sets both draft and assigned grade). Uses COURSE_ID from .env if not provided.
 
     Note: This operation may require OAuth2 authentication instead of API key.
     """
@@ -544,11 +544,521 @@ def patch_grade(
     client = ClassroomClient()
     service = ClassroomService(client)
     try:
+        # Get student info first
+        submission_info = service.get_submission_with_student_info(course_id, coursework_id, submission_id)
+        student_name = submission_info.get("studentProfile", {}).get("name", {}).get("fullName", "Unknown")
+
+        print(f"📝 Assigning grade {grade} to {student_name}...")
         service.patch_grade(course_id, coursework_id, submission_id, grade)
-        print("Grade assigned successfully.")
+        print(f"✅ Grade {grade} assigned successfully to {student_name}")
+        print("📊 Both draft and assigned grades have been set")
     except Exception as e:
-        print(f"Error assigning grade: {e}")
+        print(f"❌ Error assigning grade: {e}")
         print("Note: Grading may require OAuth2 authentication instead of API key.")
+
+
+@submission_app.command("draft-grade")
+def patch_draft_grade(
+    coursework_id: str, submission_id: str, grade: float, course_id: str = None
+) -> None:
+    """Assign a draft grade to a submission (not visible to student). Uses COURSE_ID from .env if not provided."""
+    if course_id is None:
+        course_id = os.getenv("COURSE_ID")
+        if not course_id:
+            print("No course ID provided and COURSE_ID not found in environment variables.")
+            return
+
+    client = ClassroomClient()
+    service = ClassroomService(client)
+    try:
+        submission_info = service.get_submission_with_student_info(course_id, coursework_id, submission_id)
+        student_name = submission_info.get("studentProfile", {}).get("name", {}).get("fullName", "Unknown")
+
+        print(f"📝 Assigning draft grade {grade} to {student_name}...")
+        service.patch_draft_grade(course_id, coursework_id, submission_id, grade)
+        print(f"✅ Draft grade {grade} assigned to {student_name}")
+        print("🔒 Grade is saved but not visible to student until returned")
+
+    except Exception as e:
+        print(f"❌ Error assigning draft grade: {e}")
+        print("Note: Grading may require OAuth2 authentication instead of API key.")
+
+
+@submission_app.command("assigned-grade")
+def patch_assigned_grade(
+    coursework_id: str, submission_id: str, grade: float, course_id: str = None
+) -> None:
+    """Assign a final grade to a submission (visible to student). Uses COURSE_ID from .env if not provided."""
+    if course_id is None:
+        course_id = os.getenv("COURSE_ID")
+        if not course_id:
+            print("No course ID provided and COURSE_ID not found in environment variables.")
+            return
+
+    client = ClassroomClient()
+    service = ClassroomService(client)
+    try:
+        # Get student info first
+        submission_info = service.get_submission_with_student_info(course_id, coursework_id, submission_id)
+        student_name = submission_info.get("studentProfile", {}).get("name", {}).get("fullName", "Unknown")
+
+        print(f"📝 Assigning final grade {grade} to {student_name}...")
+        service.patch_assigned_grade(course_id, coursework_id, submission_id, grade)
+        print(f"✅ Final grade {grade} assigned to {student_name}")
+        print("👁️  Grade is now visible to student")
+
+    except Exception as e:
+        print(f"❌ Error assigning final grade: {e}")
+        print("Note: Grading may require OAuth2 authentication instead of API key.")
+
+
+@submission_app.command("return")
+def return_submission(
+    coursework_id: str, submission_id: str, course_id: str = None
+) -> None:
+    """Return a submission to the student (makes grades visible). Uses COURSE_ID from .env if not provided."""
+    if course_id is None:
+        course_id = os.getenv("COURSE_ID")
+        if not course_id:
+            print("No course ID provided and COURSE_ID not found in environment variables.")
+            return
+
+    client = ClassroomClient()
+    service = ClassroomService(client)
+    try:
+        submission_info = service.get_submission_with_student_info(course_id, coursework_id, submission_id)
+        student_name = submission_info.get("studentProfile", {}).get("name", {}).get("fullName", "Unknown")
+
+        print(f"📤 Returning submission from {student_name}...")
+        service.return_submission(course_id, coursework_id, submission_id)
+        print(f"✅ Submission returned to {student_name}")
+        print("👁️  All grades are now visible to student")
+
+    except Exception as e:
+        print(f"❌ Error returning submission: {e}")
+        print("Note: Returning submissions may require OAuth2 authentication instead of API key.")
+
+
+@submission_app.command("show-grades")
+def show_grades(coursework_id: str, course_id: str = None) -> None:
+    """Show current grades for all submissions in an assignment."""
+    if course_id is None:
+        course_id = os.getenv("COURSE_ID")
+        if not course_id:
+            print("No course ID provided and COURSE_ID not found in environment variables.")
+            return
+
+    client = ClassroomClient()
+    service = ClassroomService(client)
+
+    try:
+        print(f"📊 Fetching grades for assignment {coursework_id}...")
+        submissions = service.get_student_submissions(course_id, coursework_id)
+
+        if not submissions:
+            print("❌ No submissions found for this assignment.")
+            return
+
+        print(f"📋 Grades for assignment {coursework_id}:")
+        print("=" * 80)
+
+        graded_count = 0
+        draft_count = 0
+
+        for submission in submissions:
+            user_id = submission.get("userId", "unknown")
+            assigned_grade = submission.get("assignedGrade")
+            draft_grade = submission.get("draftGrade")
+            state = submission.get("state", "UNKNOWN")
+
+            try:
+                student_profile = service.student_repository.get_student_profile(user_id)
+                student_name = student_profile.get("name", {}).get("fullName", f"User_{user_id}")
+
+                print(f"\n👤 {student_name}")
+                print(f"   📊 State: {state}")
+
+                if assigned_grade is not None:
+                    print(f"   ✅ Assigned Grade: {assigned_grade}")
+                    graded_count += 1
+                else:
+                    print(f"   📝 Assigned Grade: Not graded")
+
+                if draft_grade is not None:
+                    print(f"   📄 Draft Grade: {draft_grade}")
+                    if assigned_grade is None:
+                        draft_count += 1
+                else:
+                    print(f"   📄 Draft Grade: None")
+
+            except Exception as e:
+                print(f"   ❌ Error getting info: {e}")
+
+        print("\n" + "=" * 80)
+        print(f"📈 Summary:")
+        print(f"   📊 Total submissions: {len(submissions)}")
+        print(f"   ✅ Fully graded: {graded_count}")
+        print(f"   📄 Draft only: {draft_count}")
+        print(f"   ❌ Ungraded: {len(submissions) - graded_count - draft_count}")
+
+    except Exception as e:
+        print(f"❌ Error fetching grades: {e}")
+
+
+@submission_app.command("test-permissions")
+def test_permissions(coursework_id: str, course_id: str = None) -> None:
+    """Test what permissions we have for the Classroom API."""
+    if course_id is None:
+        course_id = os.getenv("COURSE_ID")
+        if not course_id:
+            print("No course ID provided and COURSE_ID not found in environment variables.")
+            return
+
+    client = ClassroomClient()
+    service = ClassroomService(client)
+
+    print("🔍 Testing API permissions...")
+    print(f"   📋 Course ID: {course_id}")
+    print(f"   📝 Assignment ID: {coursework_id}")
+
+    try:
+        submissions = service.get_student_submissions(course_id, coursework_id)
+        print(f"✅ Can read submissions: Found {len(submissions)} submissions")
+    except Exception as e:
+        print(f"❌ Cannot read submissions: {e}")
+        return
+
+    if not submissions:
+        print("❌ No submissions found to test grading permissions")
+        return
+
+    test_submission = submissions[0]
+    submission_id = test_submission.get("id")
+
+    try:
+        submission_info = service.get_submission_with_student_info(course_id, coursework_id, submission_id)
+        current_assigned = submission_info.get("assignedGrade")
+        current_draft = submission_info.get("draftGrade")
+        print(f"✅ Can read submission details")
+        print(f"   📊 Current assigned grade: {current_assigned}")
+        print(f"   📄 Current draft grade: {current_draft}")
+    except Exception as e:
+        print(f"❌ Cannot read submission details: {e}")
+        return
+
+    print("\n🧪 Testing grade modification permissions...")
+    try:
+        # Try to modify a draft grade
+        from repositories.submission_repository import SubmissionRepository
+        repo = SubmissionRepository(client)
+
+        test_grade = 85.0
+        print(f"   📝 Attempting to set draft grade {test_grade}...")
+
+        repo.patch_draft_grade(course_id, coursework_id, submission_id, test_grade)
+        print(f"✅ SUCCESS: Can modify draft grades!")
+
+        # Reset to original grade if there was one
+        if current_draft is not None:
+            repo.patch_draft_grade(course_id, coursework_id, submission_id, current_draft)
+            print(f"   🔄 Restored original draft grade: {current_draft}")
+
+    except Exception as e:
+        if "ProjectPermissionDenied" in str(e):
+            print(f"❌ PERMISSION DENIED: Your Google Cloud Project lacks permission to modify grades")
+            print(f"   📋 Error: {e}")
+            print(f"\n💡 Solutions:")
+            print(f"   1. Contact Google Workspace admin to enable grading permissions")
+            print(f"   2. Use a different Google Cloud Project with approved permissions")
+            print(f"   3. Request Google approval for educational use")
+        else:
+            print(f"❌ Unknown error: {e}")
+
+    # Test 4: Check our current scopes
+    print(f"\n🔑 Current OAuth scopes:")
+    for scope in client.scopes:
+        print(f"   - {scope}")
+
+
+@submission_app.command("export-grades")
+def export_grades(
+    coursework_id: str,
+    course_id: str = None,
+    output_file: str = "grades.csv"
+) -> None:
+    """Export submission data to CSV for external grading (workaround for permission issues)."""
+    if course_id is None:
+        course_id = os.getenv("COURSE_ID")
+        if not course_id:
+            print("No course ID provided and COURSE_ID not found in environment variables.")
+            return
+
+    client = ClassroomClient()
+    service = ClassroomService(client)
+
+    try:
+        print(f"📊 Exporting grades for assignment {coursework_id}...")
+        submissions = service.get_student_submissions(course_id, coursework_id)
+
+        if not submissions:
+            print("❌ No submissions found for this assignment.")
+            return
+
+        # Get assignment info
+        try:
+            coursework_list = service.get_course_work(course_id)
+            assignment_title = "Unknown Assignment"
+            for work in coursework_list:
+                if work.get("id") == coursework_id:
+                    assignment_title = work.get("title", "Unknown Assignment")
+                    break
+        except Exception:
+            assignment_title = "Unknown Assignment"
+
+        import csv
+        from pathlib import Path
+
+        # Prepare CSV data
+        csv_data = []
+        headers = [
+            "Student Name", "Email", "User ID", "Submission ID",
+            "State", "Assigned Grade", "Draft Grade",
+            "Has Attachments", "Submission Time", "Grade to Assign"
+        ]
+
+        print(f"📋 Processing {len(submissions)} submissions...")
+
+        for i, submission in enumerate(submissions, 1):
+            user_id = submission.get("userId", "unknown")
+            submission_id = submission.get("id", "")
+            state = submission.get("state", "UNKNOWN")
+            assigned_grade = submission.get("assignedGrade", "")
+            draft_grade = submission.get("draftGrade", "")
+            creation_time = submission.get("creationTime", "")
+
+            try:
+                # Get student info
+                student_profile = service.student_repository.get_student_profile(user_id)
+                student_name = student_profile.get("name", {}).get("fullName", f"User_{user_id}")
+                student_email = student_profile.get("emailAddress", "unknown@example.com")
+
+                # Check for attachments
+                attachments = service.get_submission_attachments(course_id, coursework_id, submission_id)
+                has_attachments = "Yes" if attachments else "No"
+
+                csv_data.append([
+                    student_name,
+                    student_email,
+                    user_id,
+                    submission_id,
+                    state,
+                    assigned_grade,
+                    draft_grade,
+                    has_attachments,
+                    creation_time,
+                    ""  # Empty column for manual grade entry
+                ])
+
+                print(f"   [{i}/{len(submissions)}] ✅ {student_name}")
+
+            except Exception as e:
+                csv_data.append([
+                    f"Error_User_{user_id}",
+                    "error@unknown.com",
+                    user_id,
+                    submission_id,
+                    state,
+                    assigned_grade,
+                    draft_grade,
+                    "Unknown",
+                    creation_time,
+                    ""
+                ])
+                print(f"   [{i}/{len(submissions)}] ⚠️ Error getting info for {user_id}")
+
+        # Write CSV file
+        output_path = Path(output_file)
+        with open(output_path, 'w', newline='', encoding='utf-8') as csvfile:
+            writer = csv.writer(csvfile)
+
+            # Write metadata
+            writer.writerow([f"Assignment: {assignment_title}"])
+            writer.writerow([f"Course ID: {course_id}"])
+            writer.writerow([f"Assignment ID: {coursework_id}"])
+            writer.writerow([])  # Empty row
+
+            # Write headers and data
+            writer.writerow(headers)
+            writer.writerows(csv_data)
+
+        print(f"\n✅ Export complete!")
+        print(f"   📄 File: {output_path.absolute()}")
+        print(f"   📊 Students: {len(csv_data)}")
+        print(f"\n💡 Instructions:")
+        print(f"   1. Open {output_file} in Excel/Google Sheets")
+        print(f"   2. Add grades in the 'Grade to Assign' column")
+        print(f"   3. Use the data to manually grade in Google Classroom")
+        print(f"   4. Or use the import-grades command if permissions are fixed")
+
+    except Exception as e:
+        print(f"❌ Error exporting grades: {e}")
+
+
+@submission_app.command("import-grades")
+def import_grades(
+    coursework_id: str,
+    grades_file: str,
+    course_id: str = None,
+    dry_run: bool = True
+) -> None:
+    """Import grades from CSV file (requires grading permissions)."""
+    if course_id is None:
+        course_id = os.getenv("COURSE_ID")
+        if not course_id:
+            print("No course ID provided and COURSE_ID not found in environment variables.")
+            return
+
+    from pathlib import Path
+    import csv
+
+    grades_path = Path(grades_file)
+    if not grades_path.exists():
+        print(f"❌ Grades file not found: {grades_file}")
+        return
+
+    client = ClassroomClient()
+    service = ClassroomService(client)
+
+    try:
+        print(f"📊 Importing grades from {grades_file}...")
+        if dry_run:
+            print("🧪 DRY RUN MODE - No actual grades will be assigned")
+
+        # Read CSV file
+        grades_to_import = []
+        with open(grades_path, 'r', encoding='utf-8') as csvfile:
+            reader = csv.DictReader(csvfile)
+
+            # Skip metadata rows
+            for _ in range(4):
+                next(csvfile, None)
+
+            reader = csv.DictReader(csvfile)
+            for row in reader:
+                grade = row.get("Grade to Assign", "").strip()
+                if grade and grade != "":
+                    try:
+                        grade_value = float(grade)
+                        grades_to_import.append({
+                            "student_name": row.get("Student Name", ""),
+                            "submission_id": row.get("Submission ID", ""),
+                            "grade": grade_value
+                        })
+                    except ValueError:
+                        print(f"⚠️ Invalid grade '{grade}' for {row.get('Student Name', 'Unknown')}")
+
+        if not grades_to_import:
+            print("❌ No valid grades found in CSV file")
+            return
+
+        print(f"📋 Found {len(grades_to_import)} grades to import")
+
+        successful = 0
+        failed = 0
+
+        for i, grade_data in enumerate(grades_to_import, 1):
+            student_name = grade_data["student_name"]
+            submission_id = grade_data["submission_id"]
+            grade = grade_data["grade"]
+
+            print(f"[{i}/{len(grades_to_import)}] {student_name}: {grade}")
+
+            if not dry_run:
+                try:
+                    service.patch_grade(course_id, coursework_id, submission_id, grade)
+                    successful += 1
+                    print(f"   ✅ Grade assigned")
+                except Exception as e:
+                    failed += 1
+                    print(f"   ❌ Failed: {e}")
+            else:
+                print(f"   🧪 Would assign grade {grade}")
+
+        print(f"\n🎉 Import {'simulation' if dry_run else 'process'} complete!")
+        if not dry_run:
+            print(f"   ✅ Successful: {successful}")
+            print(f"   ❌ Failed: {failed}")
+        print(f"   📊 Total: {len(grades_to_import)}")
+
+        if dry_run:
+            print(f"\n💡 To actually import grades, run:")
+            print(f"   uv run src/main.py submission import-grades {coursework_id} {grades_file} --no-dry-run")
+
+    except Exception as e:
+        print(f"❌ Error importing grades: {e}")
+
+
+@submission_app.command("draft-grade-all")
+def draft_grade_all_submissions(
+    coursework_id: str,
+    grade: float,
+    course_id: str = None
+) -> None:
+    """Assign the same draft grade to all submissions in an assignment."""
+    if course_id is None:
+        course_id = os.getenv("COURSE_ID")
+        if not course_id:
+            print("No course ID provided and COURSE_ID not found in environment variables.")
+            return
+
+    client = ClassroomClient()
+    service = ClassroomService(client)
+
+    try:
+        print(f"📝 Draft grading all submissions with grade: {grade}")
+        submissions = service.get_student_submissions(course_id, coursework_id)
+
+        if not submissions:
+            print("❌ No submissions found for this assignment.")
+            return
+
+        successful = 0
+        failed = 0
+
+        for i, submission in enumerate(submissions, 1):
+            submission_id = submission.get("id")
+            user_id = submission.get("userId", "unknown")
+
+            try:
+                # Get student name
+                student_profile = service.student_repository.get_student_profile(user_id)
+                student_name = student_profile.get("name", {}).get("fullName", f"User_{user_id}")
+
+                print(f"[{i}/{len(submissions)}] Draft grading {student_name}...")
+
+                service.patch_draft_grade(course_id, coursework_id, submission_id, grade)
+                successful += 1
+                print(f"   ✅ Draft grade {grade} assigned")
+
+            except Exception as e:
+                failed += 1
+                if "ProjectPermissionDenied" in str(e):
+                    print(f"   ❌ Permission denied - try 'export-grades' command instead")
+                else:
+                    print(f"   ❌ Failed: {e}")
+
+        print(f"\n🎉 Bulk draft grading complete!")
+        print(f"   ✅ Successful: {successful}")
+        print(f"   ❌ Failed: {failed}")
+        print(f"   📊 Total: {len(submissions)}")
+
+        if failed > 0:
+            print(f"\n💡 Alternative: Use 'export-grades' command to export to CSV for manual grading")
+
+    except Exception as e:
+        print(f"❌ Error in bulk draft grading: {e}")
+        if "ProjectPermissionDenied" in str(e):
+            print(f"💡 Try: uv run src/main.py submission export-grades {coursework_id}")
 
 
 if __name__ == "__main__":

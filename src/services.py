@@ -62,6 +62,30 @@ class ClassroomService:
             course_id, course_work_id, submission_id, grade
         )
 
+    def patch_draft_grade(
+        self, course_id: str, course_work_id: str, submission_id: str, grade: float
+    ) -> None:
+        """Assigns only a draft grade to a submission (not visible to student)."""
+        self.submission_repository.patch_draft_grade(
+            course_id, course_work_id, submission_id, grade
+        )
+
+    def patch_assigned_grade(
+        self, course_id: str, course_work_id: str, submission_id: str, grade: float
+    ) -> None:
+        """Assigns only a final grade to a submission (visible to student)."""
+        self.submission_repository.patch_assigned_grade(
+            course_id, course_work_id, submission_id, grade
+        )
+
+    def return_submission(
+        self, course_id: str, course_work_id: str, submission_id: str
+    ) -> None:
+        """Returns a submission to the student (makes grades visible)."""
+        self.submission_repository.return_submission(
+            course_id, course_work_id, submission_id
+        )
+
     def download_submission_files(
         self,
         course_id: str,
