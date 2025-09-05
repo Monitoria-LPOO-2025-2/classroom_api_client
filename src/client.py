@@ -36,7 +36,12 @@ class ClassroomClient:
                     "https://www.googleapis.com/auth/classroom.rosters",
                     "https://www.googleapis.com/auth/classroom.coursework.students",
                     "https://www.googleapis.com/auth/classroom.coursework.me",
-                    "https://www.googleapis.com/auth/drive.readonly",
+                    "https://www.googleapis.com/auth/classroom.student-submissions.students",
+                    "https://www.googleapis.com/auth/classroom.student-submissions.me",
+                    "https://www.googleapis.com/auth/classroom.profile.emails",
+                    "https://www.googleapis.com/auth/classroom.profile.photos",
+                    "https://www.googleapis.com/auth/classroom.push-notifications",
+                    "https://www.googleapis.com/auth/drive",
                 ]
 
         self.scopes: List[str] = scopes

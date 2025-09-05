@@ -68,3 +68,39 @@ class SubmissionRepository:
             updateMask="assignedGrade,draftGrade",
             body=body,
         ).execute()
+
+    def patch_draft_grade(
+        self, course_id: str, course_work_id: str, submission_id: str, grade: float
+    ) -> None:
+        """Assigns only a draft grade to a submission (not visible to student)."""
+        body: Dict[str, Any] = {"draftGrade": grade}
+        self.client.service.courses().courseWork().studentSubmissions().patch(
+            courseId=course_id,
+            courseWorkId=course_work_id,
+            id=submission_id,
+            updateMask="draftGrade",
+            body=body,
+        ).execute()
+
+    def patch_assigned_grade(
+        self, course_id: str, course_work_id: str, submission_id: str, grade: float
+    ) -> None:
+        """Assigns only a final grade to a submission (visible to student)."""
+        body: Dict[str, Any] = {"assignedGrade": grade}
+        self.client.service.courses().courseWork().studentSubmissions().patch(
+            courseId=course_id,
+            courseWorkId=course_work_id,
+            id=submission_id,
+            updateMask="assignedGrade",
+            body=body,
+        ).execute()
+
+    def return_submission(
+        self, course_id: str, course_work_id: str, submission_id: str
+    ) -> None:
+        """Returns a submission to the student (makes grades visible)."""
+        self.client.service.courses().courseWork().studentSubmissions().return_(
+            courseId=course_id,
+            courseWorkId=course_work_id,
+            id=submission_id
+        ).execute()
