@@ -66,18 +66,18 @@ uv run src/main.py course list
 uv run src/main.py course list-work
 
 # Example output:
-# 801325512968: Hello World Assignment
-# 923847561234: Final Project
+# 123456789012: Hello World Assignment
+# 234567890123: Final Project
 
 # 2. Download all submissions for the assignment
-uv run src/main.py submission download-all 801325512968
+uv run src/main.py submission download-all 123456789012
 
 # 3. Check the results
 ls downloads/
-# Gabriel_Borges/
+# Student_Name/
 # ├── main.py
 # ├── report.pdf
-# gabriel_lins/
+# Another_Student/
 # └── _no_attachments.txt
 ```
 
@@ -89,17 +89,17 @@ ls downloads/
 
 ```bash
 # 1. List all submissions to find the submission ID
-uv run src/main.py submission list 801325512968
+uv run src/main.py submission list 123456789012
 
 # 2. Download specific submission
-uv run src/main.py submission download 801325512968 Cg4Ix8KMqs4TEIjy45WpFw
+uv run src/main.py submission download 123456789012 XXXXXXXXXXXXXXXXXXXX
 ```
 
 ### Use Case 3: Download with Custom Organization
 
 ```bash
 # Download to a specific folder
-uv run src/main.py submission download-all 801325512968 --download-folder "assignment1_submissions"
+uv run src/main.py submission download-all 123456789012 --download-folder "assignment1_submissions"
 
 # Result: Creates assignment1_submissions/StudentName/ folders
 ```
@@ -112,17 +112,17 @@ uv run src/main.py submission download-all 801325512968 --download-folder "assig
 
 ```bash
 # 1. Export student data to CSV for grading
-uv run src/main.py submission export-grades 801325512968
+uv run src/main.py submission export-grades 123456789012
 
 # 2. Open grades.csv in Excel/Google Sheets
 # 3. Add grades in the "Grade to Assign" column
 # 4. Save the file
 
 # 5. Test import (dry run)
-uv run src/main.py submission import-grades 801325512968 grades.csv
+uv run src/main.py submission import-grades 123456789012 grades.csv
 
 # 6. Actually import grades (when permissions allow)
-uv run src/main.py submission import-grades 801325512968 grades.csv --no-dry-run
+uv run src/main.py submission import-grades 123456789012 grades.csv --no-dry-run
 ```
 
 ### Use Case 5: Direct API Grading (Requires Permissions)
@@ -131,29 +131,29 @@ uv run src/main.py submission import-grades 801325512968 grades.csv --no-dry-run
 
 ```bash
 # Test if you have grading permissions
-uv run src/main.py submission test-permissions 801325512968
+uv run src/main.py submission test-permissions 123456789012
 
 # Single draft grade (not visible to student)
-uv run src/main.py submission draft-grade 801325512968 Cg4Ix8KMqs4TEIjy45WpFw 85.5
+uv run src/main.py submission draft-grade 123456789012 CgXXXXXXXXXXXXXXXXXXXX 85.5
 
 # Bulk draft grading (same grade for everyone)
-uv run src/main.py submission draft-grade-all 801325512968 90.0
+uv run src/main.py submission draft-grade-all 123456789012 90.0
 
 # Final grade (visible to student)
-uv run src/main.py submission assigned-grade 801325512968 Cg4Ix8KMqs4TEIjy45WpFw 87.5
+uv run src/main.py submission assigned-grade 123456789012 CgXXXXXXXXXXXXXXXXXXXX 87.5
 
 # Return submission to make grades visible
-uv run src/main.py submission return 801325512968 Cg4Ix8KMqs4TEIjy45WpFw
+uv run src/main.py submission return 123456789012 CgXXXXXXXXXXXXXXXXXXXX
 ```
 
 ### Use Case 6: Review Grades Before Publishing
 
 ```bash
 # Check all current grades
-uv run src/main.py submission show-grades 801325512968
+uv run src/main.py submission show-grades 123456789012
 
 # Example output:
-# 👤 Gabriel Borges
+# 👤 Student Name
 #    📊 State: TURNED_IN
 #    ✅ Assigned Grade: Not graded
 #    📄 Draft Grade: 85.5
@@ -170,10 +170,10 @@ uv run src/main.py submission show-grades 801325512968
 uv run src/main.py course list
 
 # Get details of a specific course
-uv run src/main.py course get 788827935178
+uv run src/main.py course get 345678901234
 
 # List assignments in a course
-uv run src/main.py course list-work --course-id 788827935178
+uv run src/main.py course list-work --course-id 345678901234
 ```
 
 ### Use Case 8: Assignment Overview
@@ -185,10 +185,10 @@ uv run src/main.py course list-work --course-id 788827935178
 uv run src/main.py course list-work
 
 # For each assignment, check submissions
-uv run src/main.py submission list 801325512968
+uv run src/main.py submission list 123456789012
 
 # Get detailed submission info
-uv run src/main.py submission info 801325512968 Cg4Ix8KMqs4TEIjy45WpFw
+uv run src/main.py submission info 123456789012 CgXXXXXXXXXXXXXXXXXXXX
 ```
 
 ## 🔄 Bulk Operations
@@ -202,13 +202,13 @@ uv run src/main.py submission info 801325512968 Cg4Ix8KMqs4TEIjy45WpFw
 mkdir semester_end_downloads
 
 # Assignment 1
-uv run src/main.py submission download-all 801325512968 --download-folder "semester_end_downloads/assignment1"
+uv run src/main.py submission download-all 123456789012 --download-folder "semester_end_downloads/assignment1"
 
 # Assignment 2  
-uv run src/main.py submission download-all 923847561234 --download-folder "semester_end_downloads/assignment2"
+uv run src/main.py submission download-all 234567890123 --download-folder "semester_end_downloads/assignment2"
 
 # Assignment 3
-uv run src/main.py submission download-all 456789123456 --download-folder "semester_end_downloads/final_project"
+uv run src/main.py submission download-all 345678901234 --download-folder "semester_end_downloads/final_project"
 ```
 
 ### Use Case 10: Class-Wide Grade Assignment
@@ -217,10 +217,10 @@ uv run src/main.py submission download-all 456789123456 --download-folder "semes
 
 ```bash
 # Export current state
-uv run src/main.py submission export-grades 801325512968 --output-file "participation_grades.csv"
+uv run src/main.py submission export-grades 123456789012 --output-file "participation_grades.csv"
 
 # Edit CSV to add same grade for everyone, then import
-uv run src/main.py submission import-grades 801325512968 participation_grades.csv --no-dry-run
+uv run src/main.py submission import-grades 123456789012 participation_grades.csv --no-dry-run
 ```
 
 ## 💡 Advanced Use Cases
@@ -231,7 +231,7 @@ uv run src/main.py submission import-grades 801325512968 participation_grades.cs
 
 ```bash
 # Export submission data
-uv run src/main.py submission export-grades 801325512968
+uv run src/main.py submission export-grades 123456789012
 
 # Check the CSV file for:
 # - State: "CREATED" (not submitted)
@@ -244,10 +244,10 @@ uv run src/main.py submission export-grades 801325512968
 
 ```bash
 # Get file info first
-uv run src/main.py drive info 1PDHIMA-BikiW3ZI3Sxr-kJskWeYwSE0p
+uv run src/main.py drive info 1XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
 # Download specific file
-uv run src/main.py drive download 1PDHIMA-BikiW3ZI3Sxr-kJskWeYwSE0p "student_code.py"
+uv run src/main.py drive download 1XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX "student_code.py"
 ```
 
 ### Use Case 13: Comments and Feedback
@@ -256,7 +256,7 @@ uv run src/main.py drive download 1PDHIMA-BikiW3ZI3Sxr-kJskWeYwSE0p "student_cod
 
 ```bash
 # Add a private comment to a submission
-uv run src/main.py submission comment 801325512968 Cg4Ix8KMqs4TEIjy45WpFw "Great work! Consider adding more comments to your code."
+uv run src/main.py submission comment 123456789012 CgXXXXXXXXXXXXXXXXXXXX "Great work! Consider adding more comments to your code."
 ```
 
 ## 🛠 Workflow Templates
@@ -385,7 +385,7 @@ echo "Files ready for grading in assignments/$ASSIGNMENT_NAME"
 Usage:
 ```bash
 chmod +x grade_assignment.sh
-./grade_assignment.sh 801325512968 "hello_world"
+./grade_assignment.sh 123456789012 "hello_world"
 ```
 
 ## 🎯 Best Practices
