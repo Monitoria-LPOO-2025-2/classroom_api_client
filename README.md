@@ -12,6 +12,7 @@ Key features
 - Lightweight client modules supporting different auth modes (see `client_oauth.py`, `client_hybrid.py`, `client_old.py`).
 - Service wrappers in `drive_service.py` and `services.py` that encapsulate API calls.
 - Domain models in `models.py` and repository patterns in `repositories/`.
+- A comprehensive CLI with grading functionality including new "push" style commands for bulk operations.
 - A tiny runner `main.py` which demonstrates how the client modules can be used.
 
 Project layout (important files)
@@ -49,6 +50,29 @@ uv install
 ```bash
 python main.py
 ```
+
+## New Grading Commands
+
+The CLI now includes comprehensive grading functionality with new "push" style commands:
+
+```bash
+# Bulk grading - assign same grade to all submissions
+python main.py submission grade-all COURSEWORK_ID 85.0
+
+# Push draft grades to final - make draft grades visible to students  
+python main.py submission push-draft-grades COURSEWORK_ID
+
+# Push grades from CSV file - import grades from spreadsheet
+python main.py submission push-grades-from-file COURSEWORK_ID grades.csv
+
+# Interactive bulk grading - flexible command-line interface
+python main.py submission push-grades-bulk COURSEWORK_ID
+
+# Show comprehensive help for all grading commands
+python main.py submission grading-help
+```
+
+For detailed documentation, examples, and workflows, see [docs/new_grading_commands.md](docs/new_grading_commands.md).
 
 1. Import and use the client from code
 
