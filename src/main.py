@@ -1061,5 +1061,531 @@ def draft_grade_all_submissions(
             print(f"💡 Try: uv run src/main.py submission export-grades {coursework_id}")
 
 
+@submission_app.command("grade-all")
+def grade_all_submissions(
+    coursework_id: str,
+    grade: float,
+    course_id: str = None
+) -> None:
+    """Assign the same final grade to all submissions in an assignment."""
+    if course_id is None:
+        course_id = os.getenv("COURSE_ID")
+        if not course_id:
+            print("No course ID provided and COURSE_ID not found in environment variables.")
+            return
+
+    client = ClassroomClient()
+    service = ClassroomService(client)
+
+    try:
+        print(f"📝 Grading all submissions with final grade: {grade}")
+        submissions = service.get_student_submissions(course_id, coursework_id)
+
+        if not submissions:
+            print("❌ No submissions found for this assignment.")
+            return
+
+        successful = 0
+        failed = 0
+
+        for i, submission in enumerate(submissions, 1):
+            submission_id = submission.get("id")
+            user_id = submission.get("userId", "unknown")
+
+            try:
+                # Get student name
+                student_profile = service.student_repository.get_student_profile(user_id)
+                student_name = student_profile.get("name", {}).get("fullName", f"User_{user_id}")
+
+                print(f"[{i}/{len(submissions)}] Grading {student_name}...")
+
+                service.patch_grade(course_id, coursework_id, submission_id, grade)
+                successful += 1
+                print(f"   ✅ Grade {grade} assigned (both draft and final)")
+
+            except Exception as e:
+                failed += 1
+                if "ProjectPermissionDenied" in str(e):
+                    print(f"   ❌ Permission denied - try 'export-grades' command instead")
+                else:
+                    print(f"   ❌ Failed: {e}")
+
+        print(f"\n🎉 Bulk grading complete!")
+        print(f"   ✅ Successful: {successful}")
+        print(f"   ❌ Failed: {failed}")
+        print(f"   📊 Total: {len(submissions)}")
+
+        if failed > 0:
+            print(f"\n💡 Alternative: Use 'export-grades' command to export to CSV for manual grading")
+
+    except Exception as e:
+        print(f"❌ Error in bulk grading: {e}")
+        if "ProjectPermissionDenied" in str(e):
+            print(f"💡 Try: uv run src/main.py submission export-grades {coursework_id}")
+
+
+@submission_app.command("push-draft-grades")
+def push_draft_grades_to_final(
+    coursework_id: str,
+    course_id: str = None
+) -> None:
+    """Push all draft grades to become final grades (make them visible to students)."""
+    if course_id is None:
+        course_id = os.getenv("COURSE_ID")
+        if not course_id:
+            print("No course ID provided and COURSE_ID not found in environment variables.")
+            return
+
+    client = ClassroomClient()
+    service = ClassroomService(client)
+
+    try:
+        print(f"📤 Pushing draft grades to final for assignment {coursework_id}...")
+        submissions = service.get_student_submissions(course_id, coursework_id)
+
+        if not submissions:
+            print("❌ No submissions found for this assignment.")
+            return
+
+        successful = 0
+        failed = 0
+        no_draft_grade = 0
+
+        for i, submission in enumerate(submissions, 1):
+            submission_id = submission.get("id")
+            user_id = submission.get("userId", "unknown")
+            draft_grade = submission.get("draftGrade")
+
+            try:
+                # Get student name
+                student_profile = service.student_repository.get_student_profile(user_id)
+                student_name = student_profile.get("name", {}).get("fullName", f"User_{user_id}")
+
+                print(f"[{i}/{len(submissions)}] Processing {student_name}...")
+
+                if draft_grade is not None:
+                    print(f"   📝 Draft grade: {draft_grade}")
+                    service.patch_assigned_grade(course_id, coursework_id, submission_id, draft_grade)
+                    successful += 1
+                    print(f"   ✅ Draft grade {draft_grade} pushed to final grade")
+                else:
+                    no_draft_grade += 1
+                    print(f"   ⚠️  No draft grade to push")
+
+            except Exception as e:
+                failed += 1
+                if "ProjectPermissionDenied" in str(e):
+                    print(f"   ❌ Permission denied - try 'export-grades' command instead")
+                else:
+                    print(f"   ❌ Failed: {e}")
+
+        print(f"\n🎉 Push draft grades complete!")
+        print(f"   ✅ Successfully pushed: {successful}")
+        print(f"   ⚠️  No draft grade: {no_draft_grade}")
+        print(f"   ❌ Failed: {failed}")
+        print(f"   📊 Total submissions: {len(submissions)}")
+
+        if failed > 0:
+            print(f"\n💡 Alternative: Use 'export-grades' command to export to CSV for manual grading")
+
+    except Exception as e:
+        print(f"❌ Error pushing draft grades: {e}")
+        if "ProjectPermissionDenied" in str(e):
+            print(f"💡 Try: uv run src/main.py submission export-grades {coursework_id}")
+
+
+@submission_app.command("push-grades-from-file")
+def push_grades_from_file(
+    coursework_id: str,
+    grades_file: str,
+    course_id: str = None,
+    grade_type: str = "final"
+) -> None:
+    """Push grades from CSV file to student submissions (enhanced import with better naming)."""
+    if course_id is None:
+        course_id = os.getenv("COURSE_ID")
+        if not course_id:
+            print("No course ID provided and COURSE_ID not found in environment variables.")
+            return
+
+    if grade_type not in ["draft", "final", "both"]:
+        print("❌ Grade type must be 'draft', 'final', or 'both'")
+        return
+
+    from pathlib import Path
+    import csv
+
+    grades_path = Path(grades_file)
+    if not grades_path.exists():
+        print(f"❌ Grades file not found: {grades_file}")
+        return
+
+    client = ClassroomClient()
+    service = ClassroomService(client)
+
+    try:
+        print(f"📤 Pushing grades from {grades_file}...")
+        print(f"📊 Grade type: {grade_type}")
+
+        # Read CSV file
+        grades_to_push = []
+        with open(grades_path, 'r', encoding='utf-8') as csvfile:
+            reader = csv.DictReader(csvfile)
+
+            # Skip metadata rows if they exist
+            try:
+                # Try to read first row and see if it looks like metadata
+                first_line = csvfile.readline()
+                if "Assignment:" in first_line or "Course ID:" in first_line:
+                    # Skip 3 more metadata lines
+                    for _ in range(3):
+                        next(csvfile, None)
+                    reader = csv.DictReader(csvfile)
+                else:
+                    # Reset file pointer and read normally
+                    csvfile.seek(0)
+                    reader = csv.DictReader(csvfile)
+            except:
+                reader = csv.DictReader(csvfile)
+
+            for row in reader:
+                grade = row.get("Grade to Assign", "").strip()
+                if not grade:
+                    grade = row.get("Grade", "").strip()  # Alternative column name
+                
+                if grade and grade != "":
+                    try:
+                        grade_value = float(grade)
+                        grades_to_push.append({
+                            "student_name": row.get("Student Name", ""),
+                            "submission_id": row.get("Submission ID", ""),
+                            "grade": grade_value
+                        })
+                    except ValueError:
+                        print(f"⚠️ Invalid grade '{grade}' for {row.get('Student Name', 'Unknown')}")
+
+        if not grades_to_push:
+            print("❌ No valid grades found in CSV file")
+            print("💡 Make sure the CSV has 'Grade to Assign' or 'Grade' column with numeric values")
+            return
+
+        print(f"📋 Found {len(grades_to_push)} grades to push")
+
+        successful = 0
+        failed = 0
+
+        for i, grade_data in enumerate(grades_to_push, 1):
+            student_name = grade_data["student_name"]
+            submission_id = grade_data["submission_id"]
+            grade = grade_data["grade"]
+
+            print(f"[{i}/{len(grades_to_push)}] {student_name}: {grade}")
+
+            try:
+                if grade_type == "draft":
+                    service.patch_draft_grade(course_id, coursework_id, submission_id, grade)
+                    print(f"   ✅ Draft grade pushed")
+                elif grade_type == "final":
+                    service.patch_assigned_grade(course_id, coursework_id, submission_id, grade)
+                    print(f"   ✅ Final grade pushed")
+                elif grade_type == "both":
+                    service.patch_grade(course_id, coursework_id, submission_id, grade)
+                    print(f"   ✅ Both draft and final grade pushed")
+                
+                successful += 1
+            except Exception as e:
+                failed += 1
+                print(f"   ❌ Failed: {e}")
+
+        print(f"\n🎉 Push grades from file complete!")
+        print(f"   ✅ Successful: {successful}")
+        print(f"   ❌ Failed: {failed}")
+        print(f"   📊 Total: {len(grades_to_push)}")
+
+    except Exception as e:
+        print(f"❌ Error pushing grades from file: {e}")
+
+
+@submission_app.command("push-grades-bulk")
+def push_grades_bulk(
+    coursework_id: str,
+    course_id: str = None,
+    grade_type: str = "final"
+) -> None:
+    """Interactive bulk grade pusher - assign grades to multiple students at once."""
+    if course_id is None:
+        course_id = os.getenv("COURSE_ID")
+        if not course_id:
+            print("No course ID provided and COURSE_ID not found in environment variables.")
+            return
+
+    if grade_type not in ["draft", "final", "both"]:
+        print("❌ Grade type must be 'draft', 'final', or 'both'")
+        return
+
+    client = ClassroomClient()
+    service = ClassroomService(client)
+
+    try:
+        print(f"📝 Interactive bulk grade pusher for assignment {coursework_id}")
+        print(f"📊 Grade type: {grade_type}")
+        
+        submissions = service.get_student_submissions(course_id, coursework_id)
+
+        if not submissions:
+            print("❌ No submissions found for this assignment.")
+            return
+
+        print(f"\n📋 Found {len(submissions)} submissions:")
+        print("=" * 60)
+
+        # Display all students with current grades
+        students_data = []
+        for i, submission in enumerate(submissions, 1):
+            submission_id = submission.get("id")
+            user_id = submission.get("userId", "unknown")
+            assigned_grade = submission.get("assignedGrade")
+            draft_grade = submission.get("draftGrade")
+
+            try:
+                student_profile = service.student_repository.get_student_profile(user_id)
+                student_name = student_profile.get("name", {}).get("fullName", f"User_{user_id}")
+                
+                students_data.append({
+                    "index": i,
+                    "name": student_name,
+                    "submission_id": submission_id,
+                    "user_id": user_id,
+                    "assigned_grade": assigned_grade,
+                    "draft_grade": draft_grade
+                })
+
+                print(f"{i:2d}. {student_name}")
+                print(f"    📊 Assigned: {assigned_grade if assigned_grade is not None else 'None'}")
+                print(f"    📄 Draft: {draft_grade if draft_grade is not None else 'None'}")
+
+            except Exception as e:
+                students_data.append({
+                    "index": i,
+                    "name": f"Error_User_{user_id}",
+                    "submission_id": submission_id,
+                    "user_id": user_id,
+                    "assigned_grade": assigned_grade,
+                    "draft_grade": draft_grade
+                })
+                print(f"{i:2d}. Error getting info for {user_id}")
+
+        print("\n" + "=" * 60)
+        print("💡 Instructions:")
+        print("  - Enter grades in format: student_number:grade")
+        print("  - Multiple grades: 1:85 2:90 3:78")
+        print("  - Grade ranges: 1-5:85 (assigns 85 to students 1 through 5)")
+        print("  - All students: all:85")
+        print("  - Type 'quit' to exit")
+        
+        while True:
+            try:
+                user_input = input("\n📝 Enter grades (or 'quit'): ").strip()
+                
+                if user_input.lower() in ['quit', 'exit', 'q']:
+                    print("👋 Goodbye!")
+                    break
+                
+                if not user_input:
+                    continue
+
+                # Parse input
+                grade_assignments = []
+                parts = user_input.split()
+                
+                for part in parts:
+                    if ':' not in part:
+                        print(f"⚠️ Invalid format: {part}. Use student_number:grade")
+                        continue
+                    
+                    student_part, grade_part = part.split(':', 1)
+                    
+                    try:
+                        grade = float(grade_part)
+                    except ValueError:
+                        print(f"⚠️ Invalid grade: {grade_part}")
+                        continue
+                    
+                    # Handle different student selection formats
+                    if student_part.lower() == 'all':
+                        # All students
+                        for student in students_data:
+                            grade_assignments.append((student["index"], grade, student))
+                    elif '-' in student_part:
+                        # Range: 1-5
+                        try:
+                            start, end = map(int, student_part.split('-'))
+                            for idx in range(start, end + 1):
+                                if 1 <= idx <= len(students_data):
+                                    student = students_data[idx - 1]
+                                    grade_assignments.append((idx, grade, student))
+                        except ValueError:
+                            print(f"⚠️ Invalid range: {student_part}")
+                    else:
+                        # Single student
+                        try:
+                            student_idx = int(student_part)
+                            if 1 <= student_idx <= len(students_data):
+                                student = students_data[student_idx - 1]
+                                grade_assignments.append((student_idx, grade, student))
+                            else:
+                                print(f"⚠️ Student number {student_idx} out of range (1-{len(students_data)})")
+                        except ValueError:
+                            print(f"⚠️ Invalid student number: {student_part}")
+                
+                if not grade_assignments:
+                    print("❌ No valid grade assignments found")
+                    continue
+                
+                # Confirm before applying
+                print(f"\n📋 About to apply {len(grade_assignments)} grade(s):")
+                for student_idx, grade, student in grade_assignments:
+                    print(f"  {student_idx}. {student['name']}: {grade}")
+                
+                confirm = input("\n✅ Apply these grades? (y/N): ").strip().lower()
+                if confirm not in ['y', 'yes']:
+                    print("❌ Cancelled")
+                    continue
+                
+                # Apply grades
+                successful = 0
+                failed = 0
+                
+                for student_idx, grade, student in grade_assignments:
+                    try:
+                        if grade_type == "draft":
+                            service.patch_draft_grade(course_id, coursework_id, student["submission_id"], grade)
+                        elif grade_type == "final":
+                            service.patch_assigned_grade(course_id, coursework_id, student["submission_id"], grade)
+                        elif grade_type == "both":
+                            service.patch_grade(course_id, coursework_id, student["submission_id"], grade)
+                        
+                        successful += 1
+                        print(f"   ✅ {student['name']}: {grade}")
+                        
+                        # Update local data for display
+                        if grade_type in ["final", "both"]:
+                            student["assigned_grade"] = grade
+                        if grade_type in ["draft", "both"]:
+                            student["draft_grade"] = grade
+                        
+                    except Exception as e:
+                        failed += 1
+                        print(f"   ❌ {student['name']}: Failed - {e}")
+                
+                print(f"\n🎉 Grade application complete!")
+                print(f"   ✅ Successful: {successful}")
+                print(f"   ❌ Failed: {failed}")
+                
+            except KeyboardInterrupt:
+                print("\n👋 Goodbye!")
+                break
+            except Exception as e:
+                print(f"❌ Error: {e}")
+
+    except Exception as e:
+        print(f"❌ Error in bulk grade pusher: {e}")
+
+
+@submission_app.command("grading-help")
+def show_grading_help() -> None:
+    """Show help and examples for the new grading commands."""
+    print("📚 Google Classroom Grading Commands Help")
+    print("=" * 60)
+    
+    print("\n🆕 NEW GRADING COMMANDS:")
+    print("""
+1. grade-all COURSEWORK_ID GRADE
+   └─ Assign the same final grade to all submissions
+   └─ Example: submission grade-all hw123 85.0
+
+2. push-draft-grades COURSEWORK_ID  
+   └─ Convert all draft grades to final grades
+   └─ Example: submission push-draft-grades hw123
+
+3. push-grades-from-file COURSEWORK_ID FILE [--grade-type TYPE]
+   └─ Push grades from CSV file
+   └─ Example: submission push-grades-from-file hw123 grades.csv --grade-type final
+
+4. push-grades-bulk COURSEWORK_ID [--grade-type TYPE]
+   └─ Interactive bulk grading interface
+   └─ Example: submission push-grades-bulk hw123 --grade-type draft
+""")
+
+    print("\n📝 EXISTING GRADING COMMANDS:")
+    print("""
+• grade COURSEWORK_ID SUBMISSION_ID GRADE
+   └─ Grade individual submission (sets both draft and final)
+
+• draft-grade COURSEWORK_ID SUBMISSION_ID GRADE  
+   └─ Set draft grade (not visible to student)
+
+• assigned-grade COURSEWORK_ID SUBMISSION_ID GRADE
+   └─ Set final grade (visible to student)
+
+• draft-grade-all COURSEWORK_ID GRADE
+   └─ Set same draft grade for all submissions
+
+• show-grades COURSEWORK_ID
+   └─ Display current grades for all submissions
+
+• export-grades COURSEWORK_ID [--output-file FILE]
+   └─ Export grades to CSV file
+
+• return COURSEWORK_ID SUBMISSION_ID
+   └─ Return submission to student (makes grades visible)
+""")
+
+    print("\n🔄 TYPICAL GRADING WORKFLOW:")
+    print("""
+1. Export current grades:
+   submission export-grades hw123
+
+2. Set base grades for all:
+   submission grade-all hw123 75 --grade-type draft
+
+3. Make individual adjustments:
+   submission push-grades-bulk hw123 --grade-type draft
+
+4. Push draft grades to final:
+   submission push-draft-grades hw123
+
+5. Return submissions to students:
+   submission return hw123 SUBMISSION_ID
+""")
+
+    print("\n📄 CSV FILE FORMAT (for push-grades-from-file):")
+    print("""
+Student Name,Email,Submission ID,Grade to Assign
+John Doe,john@example.com,sub123,85
+Jane Smith,jane@example.com,sub456,92
+Bob Johnson,bob@example.com,sub789,78
+""")
+
+    print("\n🎯 INTERACTIVE BULK GRADING EXAMPLES:")
+    print("""
+• Single student:    1:85
+• Multiple students: 1:85 2:90 3:78  
+• Range:            1-5:85
+• All students:     all:85
+""")
+
+    print("\n💡 TIPS:")
+    print("""
+• Use COURSE_ID environment variable to avoid typing course ID each time
+• draft-grade commands are invisible to students until returned
+• assigned-grade commands are immediately visible to students  
+• Use export-grades if you encounter permission errors
+• All new commands have comprehensive error handling
+""")
+
+    print("\n🔗 For more information, see: docs/new_grading_commands.md")
+
+
 if __name__ == "__main__":
     app()
