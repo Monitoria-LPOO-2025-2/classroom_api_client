@@ -8,7 +8,13 @@ from dotenv import load_dotenv
 sys.path.insert(0, str(Path(__file__).parent))
 
 from services import ClassroomService
-from client import ClassroomClient
+
+# Allow selecting alternative client implementation (e.g., hybrid for service account)
+CLIENT_IMPL = os.getenv("CLASSROOM_CLIENT_IMPL", "oauth").lower()
+if CLIENT_IMPL == "hybrid":
+    from client_hybrid import ClassroomClient  # type: ignore
+else:
+    from client import ClassroomClient  # default OAuth client
 
 load_dotenv()
 

@@ -1,6 +1,7 @@
 import os
 import pickle
 import socket
+import base64
 from typing import List, Optional
 from pathlib import Path
 from dotenv import load_dotenv
@@ -12,7 +13,7 @@ load_dotenv()
 
 
 class ClassroomClient:
-    """A client for interacting with the Google Classroom API using OAuth 2.0 authentication."""
+    """Google Classroom API client (OAuth 2.0)."""
 
     _instance = None
 
@@ -67,27 +68,35 @@ class ClassroomClient:
         token_file = Path("token.pickle")
         credentials_file = Path("credentials.json")
 
-        # Load existing credentials from file
-        if token_file.exists():
-            with open(token_file, "rb") as token:
-                creds = pickle.load(token)
+        b64_token = os.getenv("GOOGLE_TOKEN_PICKLE_B64")
+        if b64_token and not token_file.exists():
+            try:
+                raw = base64.b64decode(b64_token)
+                with open(token_file, "wb") as f:
+                    f.write(raw)
+                print("Loaded OAuth token from GOOGLE_TOKEN_PICKLE_B64 env var.")
+            except Exception as e:
+                print(f"Failed to decode GOOGLE_TOKEN_PICKLE_B64: {e}")
 
-        # If there are no (valid) credentials available, let the user log in
+        if token_file.exists():
+            try:
+                with open(token_file, "rb") as token:
+                    creds = pickle.load(token)
+            except Exception as e:
+                print(f"Corrupted token.pickle, ignoring: {e}")
+
         if not creds or not creds.valid:
             if creds and creds.expired and creds.refresh_token:
                 creds.refresh(Request())
             else:
-                # Use credentials.json file if it exists
                 if credentials_file.exists():
                     flow = InstalledAppFlow.from_client_secrets_file(
                         str(credentials_file), self.scopes
                     )
-                    # Find a free port
                     free_port = self._find_free_port()
                     print(f"Starting OAuth server on port {free_port}...")
                     creds = flow.run_local_server(port=free_port)
                 else:
-                    # Fallback to environment variables
                     client_id = os.getenv("GOOGLE_CLIENT_ID")
                     client_secret = os.getenv("GOOGLE_CLIENT_SECRET")
                     redirect_uri = os.getenv(
@@ -100,8 +109,8 @@ class ClassroomClient:
                         or client_id == "your_client_id_here"
                     ):
                         raise ValueError(
-                            "Either place credentials.json file in the project root, "
-                            "or set valid GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in environment variables"
+                            "Either place credentials.json in project root, or set "
+                            "GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET env vars"
                         )
 
                     # Create credentials dict for OAuth flow
@@ -123,9 +132,10 @@ class ClassroomClient:
                     print(f"Starting OAuth server on port {free_port}...")
                     creds = flow.run_local_server(port=free_port)
 
-            # Save credentials for next run
-            with open(token_file, "wb") as token:
-                pickle.dump(creds, token)
+            # Save credentials for next run (skip if CI_READ_ONLY_OAUTH is set)
+            if not os.getenv("CI_READ_ONLY_OAUTH"):  # optional flag to skip writing
+                with open(token_file, "wb") as token:
+                    pickle.dump(creds, token)
 
         return creds
 
