@@ -15,17 +15,19 @@ This document provides practical examples of how to use the Google Classroom API
 ## 🚀 Quick Start
 
 ### Prerequisites
+
 1. Python 3.8+ installed
 2. Google Cloud Project with Classroom API enabled
 3. OAuth 2.0 credentials configured
 4. Course ID from Google Classroom
 
 ### Basic Setup
+
 ```bash
 # Clone and setup
 git clone <repository>
 cd classroom_api_client
-uv install
+uv sync
 
 # Setup environment
 cp .env.example .env
@@ -38,6 +40,7 @@ uv run src/main.py auth login
 ## 🔐 Authentication Setup
 
 ### First-Time Authentication
+
 ```bash
 # Reset any existing credentials
 uv run src/main.py auth reset
@@ -47,6 +50,7 @@ uv run src/main.py auth login
 ```
 
 ### Check Current Course
+
 ```bash
 # Verify your course connection
 uv run src/main.py course current
@@ -305,6 +309,7 @@ uv run src/main.py submission import-grades {ASSIGNMENT_ID} grades.csv
 ### Common Issues and Solutions
 
 #### Permission Denied Errors
+
 ```bash
 # Test your permissions
 uv run src/main.py submission test-permissions {ASSIGNMENT_ID}
@@ -314,6 +319,7 @@ uv run src/main.py submission export-grades {ASSIGNMENT_ID}
 ```
 
 #### Authentication Problems
+
 ```bash
 # Reset and re-authenticate
 uv run src/main.py auth reset
@@ -321,6 +327,7 @@ uv run src/main.py auth login
 ```
 
 #### Missing Course ID
+
 ```bash
 # Find your course
 uv run src/main.py course list
@@ -330,6 +337,7 @@ echo "COURSE_ID=your_course_id" >> .env
 ```
 
 #### No Submissions Found
+
 ```bash
 # Verify assignment ID
 uv run src/main.py course list-work
@@ -341,6 +349,7 @@ uv run src/main.py submission list {ASSIGNMENT_ID}
 ## 📝 File Organization Tips
 
 ### Recommended Directory Structure
+
 ```
 course_files/
 ├── assignments/
@@ -383,6 +392,7 @@ echo "Files ready for grading in assignments/$ASSIGNMENT_NAME"
 ```
 
 Usage:
+
 ```bash
 chmod +x grade_assignment.sh
 ./grade_assignment.sh 123456789012 "hello_world"
