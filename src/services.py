@@ -47,7 +47,7 @@ class ClassroomService:
         """
         from repositories.course_repository import CourseRepository
 
-        client = self.client 
+        client = self.client
         repo = CourseRepository(client)
         courses = repo.get_courses()
 
