@@ -227,6 +227,41 @@ gclass submission export-grades 123456789012 --output-file "participation_grades
 gclass submission import-grades 123456789012 participation_grades.csv --no-dry-run
 ```
 
+### Use Case 11: Comprehensive Submissions Export
+
+**Scenario**: Export all submission data for analysis, reporting, or archival purposes.
+
+```bash
+# Export all submissions from a specific assignment
+gclass submission export-submissions-csv --coursework-id 123456789012 --output submissions_assignment1.csv
+
+# Export all submissions from all assignments in a course (by course ID)
+gclass submission export-submissions-csv --course-id 567890123456 --output all_course_submissions.csv
+
+# Export using course/assignment names instead of IDs
+gclass submission export-submissions-csv --course-name "Intro to Programming" --work-name "Final Project" --output final_project_submissions.csv
+
+# Export without attachment details for faster processing
+gclass submission export-submissions-csv --course-name "Data Science" --no-attachments --output ds_submissions_minimal.csv
+```
+
+**The CSV export includes:**
+
+- Course and assignment information
+- Student details (name, email, user ID)  
+- Submission metadata (ID, state, timestamps)
+- Grading information (assigned grade, draft grade)
+- Attachment details (count, file names, Drive IDs, links)
+- Late submission indicators
+
+**Use cases for the comprehensive export:**
+
+- **Academic Analytics**: Analyze submission patterns and student engagement
+- **Compliance & Archival**: Keep records for institutional requirements
+- **Cross-Platform Integration**: Import data into other educational tools
+- **Progress Tracking**: Monitor class progress across multiple assignments
+- **Research Data**: Use submission timing and patterns for educational research
+
 ## 💡 Advanced Use Cases
 
 ### Use Case 11: Late Submission Tracking
@@ -350,7 +385,7 @@ gclass submission list {ASSIGNMENT_ID}
 
 ### Recommended Directory Structure
 
-```
+```text
 course_files/
 ├── assignments/
 │   ├── assignment1/

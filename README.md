@@ -100,5 +100,7 @@ Where to go next
 - List courses: `gclass course list`
 - List coursework: `gclass course list-work --course-name "Intro"`
 - Download submissions: `gclass submission download-all --course-name "Intro" --work-name "Hello World"`
+- Export submissions to CSV: `gclass submission export-submissions-csv --course-name "Intro" --output course_data.csv`
+- Export specific assignment: `gclass submission export-submissions-csv --work-name "Final Project" --output final_submissions.csv`
 - Read `docs/architeture.md` for deeper explanation and sequence diagrams.
 - Inspect `src/client_oauth.py` and `src/client_hybrid.py` for auth examples.
