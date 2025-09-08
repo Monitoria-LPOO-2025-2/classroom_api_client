@@ -38,6 +38,66 @@ class ClassroomService:
             course_id, course_work_id
         )
 
+    def resolve_course_id(self, course_identifier: str) -> str:
+        """Resolve a course ID given either an ID or (case-insensitive) name fragment.
+
+        If the identifier matches an existing course id exactly, return it.
+        Otherwise perform a case-insensitive containment match against course names.
+        Raises ValueError if not found or ambiguous.
+        """
+        from repositories.course_repository import CourseRepository
+
+        client = self.client 
+        repo = CourseRepository(client)
+        courses = repo.get_courses()
+
+        for c in courses:
+            if c.get("id") == course_identifier:
+                return course_identifier
+
+        ci = course_identifier.lower()
+        matches = [c for c in courses if ci in c.get("name", "").lower()]
+        if not matches:
+            raise ValueError(f"No course found matching '{course_identifier}'")
+        if len(matches) > 1:
+            names = ", ".join(f"{c.get('name')} ({c.get('id')})" for c in matches[:6])
+            if len(matches) > 6:
+                names += ", ..."
+            raise ValueError(
+                f"Ambiguous course identifier '{course_identifier}'. Matches: {names}"
+            )
+        return matches[0].get("id")
+
+    def resolve_coursework_id(self, course_id: str, work_identifier: str) -> str:
+        """Resolve a coursework ID given either an ID or name fragment inside a course.
+
+        Strategy mirrors resolve_course_id.
+        """
+        from repositories.coursework_repository import CourseworkRepository
+
+        repo = CourseworkRepository(self.client)
+        work_list = repo.get_course_work(course_id)
+
+        # Exact id match
+        for w in work_list:
+            if w.get("id") == work_identifier:
+                return work_identifier
+
+        wi = work_identifier.lower()
+        matches = [w for w in work_list if wi in w.get("title", "").lower()]
+        if not matches:
+            raise ValueError(
+                f"No coursework found in course {course_id} matching '{work_identifier}'"
+            )
+        if len(matches) > 1:
+            names = ", ".join(f"{w.get('title')} ({w.get('id')})" for w in matches[:6])
+            if len(matches) > 6:
+                names += ", ..."
+            raise ValueError(
+                f"Ambiguous coursework identifier '{work_identifier}'. Matches: {names}"
+            )
+        return matches[0].get("id")
+
     def get_submission_attachments(
         self, course_id: str, course_work_id: str, submission_id: str
     ) -> List[Dict[str, Any]]:

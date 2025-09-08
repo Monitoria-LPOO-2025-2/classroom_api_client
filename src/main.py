@@ -188,20 +188,36 @@ def get_submission_info(
 
 
 @submission_app.command("list")
-def list_submissions_with_students(coursework_id: str, course_id: str = None) -> None:
-    """List all submissions with student names for an assignment."""
+def list_submissions_with_students(
+    coursework_id: str = typer.Argument(
+        None, help="Coursework ID (optional if using --work-name)"
+    ),
+    course_id: str = typer.Option(None, "--course-id", help="Course ID"),
+    course_name: str = typer.Option(
+        None, "--course-name", help="Course name fragment (case-insensitive)"
+    ),
+    work_name: str = typer.Option(
+        None, "--work-name", help="Coursework title fragment (case-insensitive)"
+    ),
+) -> None:
+    """List all submissions with student names. Accepts IDs or name fragments."""
     if course_id is None:
         course_id = os.getenv("COURSE_ID")
-        if not course_id:
-            print(
-                "No course ID provided and COURSE_ID not found in environment variables."
-            )
-            return
 
     client = ClassroomClient()
     service = ClassroomService(client)
     try:
-        submissions = service.get_student_submissions(course_id, coursework_id)
+        if course_name:
+            course_id = service.resolve_course_id(course_name)
+        if not course_id:
+            print("No course specified: provide --course-id, --course-name, or set COURSE_ID in .env")
+            return
+        if not coursework_id and not work_name:
+            print("Provide COURSEWORK_ID or --work-name to identify the assignment")
+            return
+        if work_name:
+            coursework_id = service.resolve_coursework_id(course_id, work_name)
+        submissions = service.get_student_submissions(course_id, coursework_id)  # type: ignore[arg-type]
 
         if not submissions:
             print("No submissions found for this assignment.")
@@ -248,19 +264,33 @@ def list_submissions_with_students(coursework_id: str, course_id: str = None) ->
 
 @submission_app.command("download-all")
 def download_all_submissions(
-    coursework_id: str, course_id: str = None, download_folder: str = "downloads"
+    coursework_id: str = typer.Argument(None, help="Coursework ID (optional if using --work-name)"),
+    course_id: str = typer.Option(None, "--course-id", help="Course ID"),
+    course_name: str = typer.Option(None, "--course-name", help="Course name fragment"),
+    work_name: str = typer.Option(None, "--work-name", help="Coursework title fragment"),
+    download_folder: str = typer.Option("downloads", help="Destination folder"),
 ) -> None:
-    """Download all files from all submissions in an assignment, organized by student."""
+    """Download all files from an assignment (ID or name-based lookup)."""
     if course_id is None:
         course_id = os.getenv("COURSE_ID")
-        if not course_id:
-            print(
-                "No course ID provided and COURSE_ID not found in environment variables."
-            )
-            return
 
     client = ClassroomClient()
     service = ClassroomService(client)
+
+    try:
+        if course_name:
+            course_id = service.resolve_course_id(course_name)
+        if not course_id:
+            print("No course specified: provide --course-id or --course-name or set COURSE_ID")
+            return
+        if not coursework_id and not work_name:
+            print("Provide COURSEWORK_ID or --work-name to identify the assignment")
+            return
+        if work_name:
+            coursework_id = service.resolve_coursework_id(course_id, work_name)
+    except ValueError as e:
+        print(f"❌ {e}")
+        return
 
     try:
         print(f"📥 Starting download process...")
@@ -422,19 +452,22 @@ def get_file_info(file_id: str) -> None:
 
 # ----- Coursework listing -----
 @course_app.command("list-work")
-def list_coursework(course_id: str = None) -> None:
-    """List all coursework for a specific course. Uses COURSE_ID from .env if not provided."""
+def list_coursework(
+    course_id: str = typer.Option(None, "--course-id", help="Course ID"),
+    course_name: str = typer.Option(None, "--course-name", help="Course name fragment"),
+) -> None:
+    """List all coursework for a course (can resolve by name)."""
     if course_id is None:
         course_id = os.getenv("COURSE_ID")
-        if not course_id:
-            print(
-                "No course ID provided and COURSE_ID not found in environment variables."
-            )
-            return
 
     client = ClassroomClient()
     service = ClassroomService(client)
     try:
+        if course_name:
+            course_id = service.resolve_course_id(course_name)
+        if not course_id:
+            print("Provide --course-id or --course-name or set COURSE_ID")
+            return
         coursework = service.get_course_work(course_id)
         if not coursework:
             print("No coursework found for this course.")
