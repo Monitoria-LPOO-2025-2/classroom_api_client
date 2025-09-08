@@ -34,7 +34,7 @@ cp .env.example .env
 # Edit .env with your COURSE_ID and credentials
 
 # Authenticate
-uv run src/main.py auth login
+gclass auth login
 ```
 
 ## 🔐 Authentication Setup
@@ -43,20 +43,20 @@ uv run src/main.py auth login
 
 ```bash
 # Reset any existing credentials
-uv run src/main.py auth reset
+gclass auth reset
 
 # Start fresh authentication
-uv run src/main.py auth login
+gclass auth login
 ```
 
 ### Check Current Course
 
 ```bash
 # Verify your course connection
-uv run src/main.py course current
+gclass course current
 
 # List all available courses
-uv run src/main.py course list
+gclass course list
 ```
 
 ## 📥 Downloading Student Submissions
@@ -67,14 +67,14 @@ uv run src/main.py course list
 
 ```bash
 # 1. First, list assignments to get the coursework ID
-uv run src/main.py course list-work
+gclass course list-work
 
 # Example output:
 # 123456789012: Hello World Assignment
 # 234567890123: Final Project
 
 # 2. Download all submissions for the assignment
-uv run src/main.py submission download-all 123456789012
+gclass submission download-all 123456789012
 
 # 3. Check the results
 ls downloads/
@@ -93,17 +93,17 @@ ls downloads/
 
 ```bash
 # 1. List all submissions to find the submission ID
-uv run src/main.py submission list 123456789012
+gclass submission list 123456789012
 
 # 2. Download specific submission
-uv run src/main.py submission download 123456789012 XXXXXXXXXXXXXXXXXXXX
+gclass submission download 123456789012 XXXXXXXXXXXXXXXXXXXX
 ```
 
 ### Use Case 3: Download with Custom Organization
 
 ```bash
 # Download to a specific folder
-uv run src/main.py submission download-all 123456789012 --download-folder "assignment1_submissions"
+gclass submission download-all 123456789012 --download-folder "assignment1_submissions"
 
 # Result: Creates assignment1_submissions/StudentName/ folders
 ```
@@ -116,17 +116,17 @@ uv run src/main.py submission download-all 123456789012 --download-folder "assig
 
 ```bash
 # 1. Export student data to CSV for grading
-uv run src/main.py submission export-grades 123456789012
+gclass submission export-grades 123456789012
 
 # 2. Open grades.csv in Excel/Google Sheets
 # 3. Add grades in the "Grade to Assign" column
 # 4. Save the file
 
 # 5. Test import (dry run)
-uv run src/main.py submission import-grades 123456789012 grades.csv
+gclass submission import-grades 123456789012 grades.csv
 
 # 6. Actually import grades (when permissions allow)
-uv run src/main.py submission import-grades 123456789012 grades.csv --no-dry-run
+gclass submission import-grades 123456789012 grades.csv --no-dry-run
 ```
 
 ### Use Case 5: Direct API Grading (Requires Permissions)
@@ -135,26 +135,26 @@ uv run src/main.py submission import-grades 123456789012 grades.csv --no-dry-run
 
 ```bash
 # Test if you have grading permissions
-uv run src/main.py submission test-permissions 123456789012
+gclass submission test-permissions 123456789012
 
 # Single draft grade (not visible to student)
-uv run src/main.py submission draft-grade 123456789012 CgXXXXXXXXXXXXXXXXXXXX 85.5
+gclass submission draft-grade 123456789012 CgXXXXXXXXXXXXXXXXXXXX 85.5
 
 # Bulk draft grading (same grade for everyone)
-uv run src/main.py submission draft-grade-all 123456789012 90.0
+gclass submission draft-grade-all 123456789012 90.0
 
 # Final grade (visible to student)
-uv run src/main.py submission assigned-grade 123456789012 CgXXXXXXXXXXXXXXXXXXXX 87.5
+gclass submission assigned-grade 123456789012 CgXXXXXXXXXXXXXXXXXXXX 87.5
 
 # Return submission to make grades visible
-uv run src/main.py submission return 123456789012 CgXXXXXXXXXXXXXXXXXXXX
+gclass submission return 123456789012 CgXXXXXXXXXXXXXXXXXXXX
 ```
 
 ### Use Case 6: Review Grades Before Publishing
 
 ```bash
 # Check all current grades
-uv run src/main.py submission show-grades 123456789012
+gclass submission show-grades 123456789012
 
 # Example output:
 # 👤 Student Name
@@ -171,13 +171,13 @@ uv run src/main.py submission show-grades 123456789012
 
 ```bash
 # List all your courses
-uv run src/main.py course list
+gclass course list
 
 # Get details of a specific course
-uv run src/main.py course get 345678901234
+gclass course get 345678901234
 
 # List assignments in a course
-uv run src/main.py course list-work --course-id 345678901234
+gclass course list-work --course-id 345678901234
 ```
 
 ### Use Case 8: Assignment Overview
@@ -186,13 +186,13 @@ uv run src/main.py course list-work --course-id 345678901234
 
 ```bash
 # List all assignments
-uv run src/main.py course list-work
+gclass course list-work
 
 # For each assignment, check submissions
-uv run src/main.py submission list 123456789012
+gclass submission list 123456789012
 
 # Get detailed submission info
-uv run src/main.py submission info 123456789012 CgXXXXXXXXXXXXXXXXXXXX
+gclass submission info 123456789012 CgXXXXXXXXXXXXXXXXXXXX
 ```
 
 ## 🔄 Bulk Operations
@@ -206,13 +206,13 @@ uv run src/main.py submission info 123456789012 CgXXXXXXXXXXXXXXXXXXXX
 mkdir semester_end_downloads
 
 # Assignment 1
-uv run src/main.py submission download-all 123456789012 --download-folder "semester_end_downloads/assignment1"
+gclass submission download-all 123456789012 --download-folder "semester_end_downloads/assignment1"
 
 # Assignment 2  
-uv run src/main.py submission download-all 234567890123 --download-folder "semester_end_downloads/assignment2"
+gclass submission download-all 234567890123 --download-folder "semester_end_downloads/assignment2"
 
 # Assignment 3
-uv run src/main.py submission download-all 345678901234 --download-folder "semester_end_downloads/final_project"
+gclass submission download-all 345678901234 --download-folder "semester_end_downloads/final_project"
 ```
 
 ### Use Case 10: Class-Wide Grade Assignment
@@ -221,10 +221,10 @@ uv run src/main.py submission download-all 345678901234 --download-folder "semes
 
 ```bash
 # Export current state
-uv run src/main.py submission export-grades 123456789012 --output-file "participation_grades.csv"
+gclass submission export-grades 123456789012 --output-file "participation_grades.csv"
 
 # Edit CSV to add same grade for everyone, then import
-uv run src/main.py submission import-grades 123456789012 participation_grades.csv --no-dry-run
+gclass submission import-grades 123456789012 participation_grades.csv --no-dry-run
 ```
 
 ## 💡 Advanced Use Cases
@@ -235,7 +235,7 @@ uv run src/main.py submission import-grades 123456789012 participation_grades.cs
 
 ```bash
 # Export submission data
-uv run src/main.py submission export-grades 123456789012
+gclass submission export-grades 123456789012
 
 # Check the CSV file for:
 # - State: "CREATED" (not submitted)
@@ -248,10 +248,10 @@ uv run src/main.py submission export-grades 123456789012
 
 ```bash
 # Get file info first
-uv run src/main.py drive info 1XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+gclass drive info 1XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
 # Download specific file
-uv run src/main.py drive download 1XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX "student_code.py"
+gclass drive download 1XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX "student_code.py"
 ```
 
 ### Use Case 13: Comments and Feedback
@@ -260,7 +260,7 @@ uv run src/main.py drive download 1XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX "student_code
 
 ```bash
 # Add a private comment to a submission
-uv run src/main.py submission comment 123456789012 CgXXXXXXXXXXXXXXXXXXXX "Great work! Consider adding more comments to your code."
+gclass submission comment 123456789012 CgXXXXXXXXXXXXXXXXXXXX "Great work! Consider adding more comments to your code."
 ```
 
 ## 🛠 Workflow Templates
@@ -269,39 +269,39 @@ uv run src/main.py submission comment 123456789012 CgXXXXXXXXXXXXXXXXXXXX "Great
 
 ```bash
 # 1. Download all submissions
-uv run src/main.py submission download-all {ASSIGNMENT_ID}
+gclass submission download-all {ASSIGNMENT_ID}
 
 # 2. Review files locally
 cd downloads/
 # ... review student work ...
 
 # 3. Export for grading
-uv run src/main.py submission export-grades {ASSIGNMENT_ID}
+gclass submission export-grades {ASSIGNMENT_ID}
 
 # 4. Grade in spreadsheet
 # Open grades.csv, add grades, save
 
 # 5. Import grades
-uv run src/main.py submission import-grades {ASSIGNMENT_ID} grades.csv
+gclass submission import-grades {ASSIGNMENT_ID} grades.csv
 
 # 6. Verify grades
-uv run src/main.py submission show-grades {ASSIGNMENT_ID}
+gclass submission show-grades {ASSIGNMENT_ID}
 ```
 
 ### Daily Teaching Routine
 
 ```bash
 # Morning: Check new submissions
-uv run src/main.py course list-work
-uv run src/main.py submission list {ASSIGNMENT_ID}
+gclass course list-work
+gclass submission list {ASSIGNMENT_ID}
 
 # Download new submissions
-uv run src/main.py submission download-all {ASSIGNMENT_ID}
+gclass submission download-all {ASSIGNMENT_ID}
 
 # Evening: Grade and provide feedback
-uv run src/main.py submission export-grades {ASSIGNMENT_ID}
+gclass submission export-grades {ASSIGNMENT_ID}
 # ... grade in spreadsheet ...
-uv run src/main.py submission import-grades {ASSIGNMENT_ID} grades.csv
+gclass submission import-grades {ASSIGNMENT_ID} grades.csv
 ```
 
 ## 🔧 Troubleshooting
@@ -312,25 +312,25 @@ uv run src/main.py submission import-grades {ASSIGNMENT_ID} grades.csv
 
 ```bash
 # Test your permissions
-uv run src/main.py submission test-permissions {ASSIGNMENT_ID}
+gclass submission test-permissions {ASSIGNMENT_ID}
 
 # If grading fails, use export method
-uv run src/main.py submission export-grades {ASSIGNMENT_ID}
+gclass submission export-grades {ASSIGNMENT_ID}
 ```
 
 #### Authentication Problems
 
 ```bash
 # Reset and re-authenticate
-uv run src/main.py auth reset
-uv run src/main.py auth login
+gclass auth reset
+gclass auth login
 ```
 
 #### Missing Course ID
 
 ```bash
 # Find your course
-uv run src/main.py course list
+gclass course list
 
 # Update .env file with correct COURSE_ID
 echo "COURSE_ID=your_course_id" >> .env
@@ -340,10 +340,10 @@ echo "COURSE_ID=your_course_id" >> .env
 
 ```bash
 # Verify assignment ID
-uv run src/main.py course list-work
+gclass course list-work
 
 # Check if assignment exists
-uv run src/main.py submission list {ASSIGNMENT_ID}
+gclass submission list {ASSIGNMENT_ID}
 ```
 
 ## 📝 File Organization Tips

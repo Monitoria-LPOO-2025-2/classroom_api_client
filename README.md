@@ -44,10 +44,10 @@ Or using uv:
 uv install
 ```
 
-1. Run the example runner
+1. Run the CLI (installed console script `gclass`)
 
 ```bash
-python main.py
+gclass --help
 ```
 
 1. Import and use the client from code
@@ -96,5 +96,9 @@ Notes and assumptions
 
 Where to go next
 
-- Read `docs/architeture.md` for a deeper explanation and sequence diagrams.
+- Authenticate: `gclass auth login`
+- List courses: `gclass course list`
+- List coursework: `gclass course list-work --course-name "Intro"`
+- Download submissions: `gclass submission download-all --course-name "Intro" --work-name "Hello World"`
+- Read `docs/architeture.md` for deeper explanation and sequence diagrams.
 - Inspect `src/client_oauth.py` and `src/client_hybrid.py` for auth examples.
