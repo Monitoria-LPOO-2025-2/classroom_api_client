@@ -21,6 +21,34 @@ class SubmissionRepository:
         )
         return submissions.get("studentSubmissions", [])
 
+    def get_all_course_submissions(self, course_id: str) -> List[Dict[str, Any]]:
+        """Fetches all submissions for all coursework in a course."""
+        from .coursework_repository import CourseworkRepository
+        
+        coursework_repo = CourseworkRepository(self.client)
+        all_coursework = coursework_repo.get_course_work(course_id)
+        
+        all_submissions = []
+        for coursework in all_coursework:
+            coursework_id = coursework.get("id")
+            if coursework_id:
+                try:
+                    submissions = self.get_student_submissions(course_id, coursework_id)
+                    # Add coursework info to each submission
+                    for submission in submissions:
+                        submission["coursework"] = {
+                            "id": coursework_id,
+                            "title": coursework.get("title", "Unknown"),
+                            "description": coursework.get("description", ""),
+                        }
+                    all_submissions.extend(submissions)
+                except Exception as e:
+                    # Log error but continue with other coursework
+                    print(f"Warning: Could not fetch submissions for coursework {coursework_id}: {e}")
+                    continue
+        
+        return all_submissions
+
     def get_submission_with_student_info(
         self, course_id: str, course_work_id: str, submission_id: str
     ) -> Dict[str, Any]:

@@ -1016,6 +1016,177 @@ def export_grades(
         print(f"❌ Error exporting grades: {e}")
 
 
+@submission_app.command("export-submissions-csv")
+def export_submissions_csv(
+    course_id: str = typer.Option(None, "--course-id", help="Course ID"),
+    course_name: str = typer.Option(
+        None, "--course-name", help="Course name fragment (case-insensitive)"
+    ),
+    coursework_id: str = typer.Option(
+        None, "--coursework-id", help="Specific coursework ID (optional - exports all if not provided)"
+    ),
+    work_name: str = typer.Option(
+        None, "--work-name", help="Coursework title fragment (case-insensitive)"
+    ),
+    output_file: str = typer.Option("submissions_export.csv", "--output", help="Output CSV file name"),
+) -> None:
+    """Export submissions to CSV with essential columns:
+    Student Name, Grade, Submission State, Coursework, Course."""
+    
+    # Resolve course ID
+    if course_id is None:
+        course_id = os.getenv("COURSE_ID")
+
+    client = ClassroomClient()
+    service = ClassroomService(client)
+
+    try:
+        # Resolve course by name if needed
+        if course_name:
+            course_id = service.resolve_course_id(course_name)
+        
+        if not course_id:
+            print("No course specified: provide --course-id, --course-name, or set COURSE_ID in .env")
+            return
+
+        course_info = service.get_course(course_id)
+        course_name_resolved = course_info.get("name", "Unknown Course")
+
+        print(f"📊 Exporting submissions from course: {course_name_resolved}")
+
+        coursework_list = []
+        if coursework_id or work_name:
+            if work_name:
+                coursework_id = service.resolve_coursework_id(course_id, work_name)
+            
+            all_coursework = service.get_course_work(course_id)
+            coursework_list = [cw for cw in all_coursework if cw.get("id") == coursework_id]
+        else:
+            coursework_list = service.get_course_work(course_id)
+
+        if not coursework_list:
+            print("❌ No coursework found.")
+            return
+
+        print(f"📚 Found {len(coursework_list)} assignment(s) to export")
+
+        import csv
+        from pathlib import Path
+        from datetime import datetime
+
+        # Prepare CSV data
+        csv_data = []
+        headers = [
+            "Student Name",
+            "Grade",
+            "Submission State",
+            "Coursework",
+            "Course",
+        ]
+
+        total_submissions = 0
+        processed_assignments = 0
+
+        for coursework in coursework_list:
+            assignment_id = coursework.get("id", "")
+            assignment_title = coursework.get("title", "Unknown Assignment")
+            
+            print(f"\n📝 Processing: {assignment_title}")
+            
+            try:
+                submissions = service.get_student_submissions(course_id, assignment_id)
+                
+                if not submissions:
+                    print(f"   ℹ️  No submissions found")
+                    continue
+                
+                print(f"   📊 Found {len(submissions)} submission(s)")
+                
+                for i, submission in enumerate(submissions, 1):
+                    user_id = submission.get("userId", "unknown")
+                    state = submission.get("state", "UNKNOWN")
+                    assigned_grade = submission.get("assignedGrade", "")
+                    draft_grade = submission.get("draftGrade", "")
+
+                    try:
+                        # Get student info
+                        student_profile = service.student_repository.get_student_profile(
+                            user_id
+                        )
+                        student_name = student_profile.get("name", {}).get(
+                            "fullName", f"User_{user_id}"
+                        )
+
+                        # Determine the grade to display (prefer assigned over draft)
+                        grade = assigned_grade or draft_grade or ""
+
+                        # Build simplified row data
+                        row_data = [
+                            student_name,
+                            grade,
+                            state,
+                            assignment_title,
+                            course_name_resolved,
+                        ]
+
+                        csv_data.append(row_data)
+                        total_submissions += 1
+
+                        print(f"      [{i}/{len(submissions)}] ✅ {student_name}")
+
+                    except Exception:
+                        # Add error row with minimal info
+                        error_row = [
+                            f"Error_User_{user_id}",
+                            assigned_grade or draft_grade or "",
+                            state,
+                            assignment_title,
+                            course_name_resolved,
+                        ]
+                        
+                        csv_data.append(error_row)
+                        total_submissions += 1
+                        print(
+                            f"      [{i}/{len(submissions)}] ⚠️ Error: {user_id}"
+                        )
+
+                processed_assignments += 1
+
+            except Exception as e:
+                print(f"   ❌ Error processing assignment {assignment_title}: {e}")
+
+        # Write CSV file
+        output_path = Path(output_file)
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
+        with open(output_path, "w", newline="", encoding="utf-8") as csvfile:
+            writer = csv.writer(csvfile)
+
+            writer.writerow([f"Google Classroom Submissions Export"])
+            writer.writerow([f"Generated: {timestamp}"])
+            writer.writerow([f"Course: {course_name_resolved} (ID: {course_id})"])
+            writer.writerow([f"Assignments Processed: {processed_assignments}"])
+            writer.writerow([f"Total Submissions: {total_submissions}"])
+            writer.writerow([])  # Empty row
+
+            # Write headers and data
+            writer.writerow(headers)
+            writer.writerows(csv_data)
+
+        print(f"\n✅ Export complete!")
+        print(f"   📄 File: {output_path.absolute()}")
+        print(f"   📚 Assignments: {processed_assignments}")
+        print(f"   📊 Submissions: {total_submissions}")
+        
+        if csv_data:
+            print(f"\n💡 CSV contains the following columns:")
+            for i, header in enumerate(headers, 1):
+                print(f"   {i:2d}. {header}")
+
+    except Exception as e:
+        print(f"❌ Error exporting submissions: {e}")
+
+
 @submission_app.command("import-grades")
 def import_grades(
     coursework_id: str, grades_file: str, course_id: str = None, dry_run: bool = True

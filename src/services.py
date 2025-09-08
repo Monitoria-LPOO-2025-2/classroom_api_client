@@ -38,6 +38,10 @@ class ClassroomService:
             course_id, course_work_id
         )
 
+    def get_all_course_submissions(self, course_id: str) -> List[Dict[str, Any]]:
+        """Fetches all submissions for all coursework in a course."""
+        return self.submission_repository.get_all_course_submissions(course_id)
+
     def resolve_course_id(self, course_identifier: str) -> str:
         """Resolve a course ID given either an ID or (case-insensitive) name fragment.
 
@@ -179,7 +183,8 @@ class ClassroomService:
                     submission["studentProfile"] = student_profile
                 except Exception as e:
                     print(
-                        f"⚠️  Warning: Could not get student profile for user {submission['userId']}: {e}"
+                        f"⚠️  Warning: Could not get student profile for user "
+                        f"{submission['userId']}: {e}"
                     )
                     # Create a minimal profile
                     submission["studentProfile"] = {
@@ -211,7 +216,8 @@ class ClassroomService:
         submission_id: str,
         download_folder: str = "downloads",
     ) -> Dict[str, Any]:
-        """Downloads files and returns information about the student who submitted them."""
+        """Downloads files and returns information about the student who
+        submitted them."""
         try:
             # Get submission with student info
             submission_info = self.get_submission_with_student_info(
